@@ -13,13 +13,14 @@
 3. [Was ist Coolify — und warum ist es gefährlich?](#3-was-ist-coolify--und-warum-ist-es-gefährlich)
 4. [Wer greift dich überhaupt an?](#4-wer-greift-dich-überhaupt-an)
 5. [Die Begriffe, die du brauchst](#5-die-begriffe-die-du-brauchst)
-6. [Was das Script macht — Schritt für Schritt erklärt](#6-was-das-script-macht--schritt-für-schritt-erklärt)
-7. [Der Rückfall-Timer — warum du dich nicht aussperren kannst](#7-der-rückfall-timer--warum-du-dich-nicht-aussperren-kannst)
-8. [Was du selbst klicken musst (und warum das Script das nicht kann)](#8-was-du-selbst-klicken-musst-und-warum-das-script-das-nicht-kann)
-9. [Der komplette Ablauf — was du wann tippst](#9-der-komplette-ablauf--was-du-wann-tippst)
-10. [Was du danach anders machst](#10-was-du-danach-anders-machst)
-11. [Häufige Fragen](#11-häufige-fragen)
-12. [Glossar](#12-glossar)
+6. [Werkzeugkasten: Terminal und SSH — Schritt für Schritt](#6-werkzeugkasten-terminal-und-ssh--schritt-für-schritt)
+7. [Was das Script macht — Schritt für Schritt erklärt](#7-was-das-script-macht--schritt-für-schritt-erklärt)
+8. [Der Rückfall-Timer — warum du dich nicht aussperren kannst](#8-der-rückfall-timer--warum-du-dich-nicht-aussperren-kannst)
+9. [Was du selbst klicken musst (und warum das Script das nicht kann)](#9-was-du-selbst-klicken-musst-und-warum-das-script-das-nicht-kann)
+10. [Der komplette Ablauf — was du wann tippst](#10-der-komplette-ablauf--was-du-wann-tippst)
+11. [Was du danach anders machst](#11-was-du-danach-anders-machst)
+12. [Häufige Fragen](#12-häufige-fragen)
+13. [Glossar](#13-glossar)
 
 ---
 
@@ -118,6 +119,8 @@ SSH ist die Art, wie du dich mit deinem Server verbindest, um ihm Befehle zu geb
 
 SSH ist also **deine wichtigste Tür**. Sie muss offen bleiben — aber nur für dich.
 
+Wie du das Terminal öffnest, dich zum ersten Mal verbindest und einen Key anlegst, steht Schritt für Schritt in [Abschnitt 6](#6-werkzeugkasten-terminal-und-ssh--schritt-für-schritt).
+
 ### Passwort vs. SSH-Key — Zahlenschloss vs. Sicherheitsschlüssel
 
 Für SSH gibt es zwei Arten, sich auszuweisen:
@@ -167,7 +170,252 @@ Ein Script ist eine Textdatei mit Befehlen, die nacheinander ausgeführt werden.
 
 ---
 
-## 6. Was das Script macht — Schritt für Schritt erklärt
+## 6. Werkzeugkasten: Terminal und SSH — Schritt für Schritt
+
+> Dieser Abschnitt ist für alle, die noch nie ein Terminal geöffnet oder sich per SSH irgendwo eingeloggt haben. Wenn du das schon kannst, spring zu [Abschnitt 7](#7-was-das-script-macht--schritt-für-schritt-erklärt). Alle anderen: Nimm dir 20 Minuten und mach es einmal mit. Danach kannst du es.
+
+### 6.1 Das Terminal öffnen
+
+Das Terminal ist ein Programm, das schon auf deinem Rechner ist. Du tippst einen Befehl, drückst Enter, der Computer antwortet mit Text. Kein Mausklick, keine Fenster — nur Text. Das wirkt am Anfang fremd, ist aber das Werkzeug, mit dem jeder Server auf der Welt verwaltet wird.
+
+| Dein Rechner | So öffnest du das Terminal |
+| --- | --- |
+| **Mac** | `Cmd + Leertaste`, „Terminal" tippen, Enter. |
+| **Windows 10/11** | Startmenü, „Terminal" oder „PowerShell" tippen, Enter. SSH ist seit Windows 10 eingebaut, du brauchst kein PuTTY mehr. |
+| **Linux** | `Strg + Alt + T` oder „Terminal" im Anwendungsmenü. |
+| **Handy / Tablet** | Geht (Termius, Blink, JuiceSSH), aber für das Script bitte einen richtigen Rechner. Du brauchst zwei Fenster nebeneinander. |
+
+Du siehst eine Zeile mit deinem Benutzernamen und einem blinkenden Cursor. Das ist die **Eingabeaufforderung** (englisch: *Prompt*). Sie wartet auf dich.
+
+Zum Warmwerden tipp das und drück Enter:
+
+```bash
+whoami
+```
+
+Der Computer antwortet mit deinem Benutzernamen. Glückwunsch, du hast gerade deinen ersten Befehl ausgeführt. Mehr ist es nicht: tippen, Enter, lesen.
+
+**Vier Dinge, die du über das Terminal wissen musst:**
+
+1. **Kopieren und Einfügen funktioniert anders.** Auf dem Mac wie immer (`Cmd + C` / `Cmd + V`). In Windows Terminal und Linux: `Strg + Shift + C` / `Strg + Shift + V` — oder Rechtsklick. `Strg + C` alleine bricht im Terminal den laufenden Befehl ab!
+2. **Groß- und Kleinschreibung zählt.** `Install.sh` und `install.sh` sind zwei verschiedene Dateien.
+3. **Beim Passwort-Eintippen siehst du nichts.** Keine Sternchen, keine Punkte. Das ist Absicht. Tippen, Enter — es funktioniert trotzdem.
+4. **Wenn du nicht mehr weiterweißt:** `Strg + C` bricht ab. `exit` oder `Strg + D` schließt die Verbindung. Ein neues Fenster öffnen kannst du immer.
+
+### 6.2 Die Adresse deines Servers finden
+
+Dein Server hat eine **IP-Adresse** — vier Zahlen mit Punkten, etwa `203.0.113.42`. Sie steht im Panel deines Hosters (Hetzner: „Server" → dein Server → „IPv4"; Netcup, Contabo, IONOS: in der Serverübersicht). Schreib sie dir raus, du brauchst sie gleich.
+
+Wenn dein Coolify schon über eine Domain läuft (z. B. `coolify.deine-domain.de`), kannst du die auch nehmen — sie zeigt auf dieselbe Adresse.
+
+### 6.3 Der erste Login per SSH
+
+Jetzt verbindest du dich zum ersten Mal. In deinem Terminal:
+
+```bash
+ssh root@203.0.113.42
+```
+
+Ersetz die Zahlen durch deine IP. `root` ist der Benutzername — bei den meisten frisch gemieteten Servern ist das der Anfangs-Benutzer. Das `@` heißt einfach „bei".
+
+**Beim allerersten Mal kommt eine Frage, die viele erschreckt:**
+
+```
+The authenticity of host '203.0.113.42' can't be established.
+ED25519 key fingerprint is SHA256:aBcDeF...
+Are you sure you want to continue connecting (yes/no/[fingerprint])?
+```
+
+Übersetzt: „Ich kenne diesen Server noch nicht. Bist du sicher, dass das der richtige ist?" Dein Rechner merkt sich ab jetzt den „Fingerabdruck" des Servers und warnt dich, falls sich jemand später als dein Server ausgibt. Tipp `yes`, Enter. Diese Frage kommt pro Server nur einmal.
+
+Dann fragt der Server nach dem Passwort (das aus der E-Mail deines Hosters oder das, was du bei der Bestellung festgelegt hast). Tippen — du siehst nichts — Enter.
+
+Wenn es geklappt hat, sieht deine Eingabezeile jetzt anders aus, etwa `root@mein-server:~#`. **Du bist jetzt auf dem Server.** Alles, was du ab jetzt tippst, passiert dort, nicht auf deinem Laptop.
+
+Probier:
+
+```bash
+hostname        # zeigt den Namen des Servers
+docker ps       # zeigt die laufenden Container – da sollte "coolify" auftauchen
+exit            # zurück auf deinen Laptop
+```
+
+### 6.4 Einen SSH-Key erzeugen
+
+Bisher hast du dich mit Passwort eingeloggt. Das ist genau das, was die Bots auch versuchen. Jetzt bauen wir den Schlüssel, der nicht zu erraten ist.
+
+**Auf deinem Laptop** (nicht auf dem Server — erst `exit`, falls du noch drauf bist):
+
+```bash
+ssh-keygen -t ed25519 -C "mein-laptop"
+```
+
+`ed25519` ist der moderne Schlüsseltyp. `-C "mein-laptop"` ist nur ein Kommentar, damit du den Key später wiedererkennst.
+
+Es kommen drei Fragen:
+
+1. **„Enter file in which to save the key"** — Enter drücken, der Vorschlag ist gut.
+2. **„Enter passphrase"** — eine Passphrase ist ein Passwort *für den Schlüssel selbst*. Wenn jemand deinen Laptop klaut, kann er den Key ohne Passphrase sofort benutzen. Für deinen persönlichen Key: Passphrase setzen, gern einen ganzen Satz. Tippen, Enter, nochmal tippen, Enter.
+3. Fertig. Du siehst ein kleines Zufallsbild aus Zeichen — das ist normal.
+
+Jetzt liegen in deinem Benutzerordner unter `.ssh/` zwei Dateien:
+
+| Datei | Was das ist | Regel |
+| --- | --- | --- |
+| `id_ed25519` | dein **privater** Schlüssel | **Niemals** weitergeben, nirgendwo hochladen, nicht in Chats einfügen. Bleibt auf deinem Laptop. |
+| `id_ed25519.pub` | dein **öffentlicher** Schlüssel | Darf jeder sehen. Der kommt auf den Server. |
+
+Der Trick dahinter: Der Server kennt nur den öffentlichen Teil. Damit kann er prüfen, ob du den privaten Teil hast — aber er kann daraus den privaten Teil nicht berechnen. Deshalb ist es egal, wenn der öffentliche Key irgendwo herumliegt.
+
+Den öffentlichen Teil zeigst du dir so an:
+
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
+
+Das ist eine einzige lange Zeile, die mit `ssh-ed25519 AAAA…` beginnt und mit `mein-laptop` endet. **Die ganze Zeile** ist dein öffentlicher Key. Kopier sie komplett (mit dem `ssh-ed25519` am Anfang und dem Kommentar am Ende).
+
+### 6.5 Den Key auf den Server bringen
+
+Drei Wege, vom einfachsten zum universellsten. Einer reicht.
+
+**Weg A — mit einem Befehl (Mac / Linux):**
+
+```bash
+ssh-copy-id root@203.0.113.42
+```
+
+Fragt einmal nach dem Server-Passwort, kopiert den öffentlichen Key an die richtige Stelle. Fertig.
+
+**Weg B — im Hoster-Panel:** Hetzner, Netcup und andere haben unter „SSH-Keys" oder „Sicherheit" ein Feld, in das du deinen öffentlichen Key einfügst. Das gilt dann meist nur für **neue** Server — für einen laufenden Server nimm A oder C.
+
+**Weg C — von Hand (funktioniert überall, auch Windows):**
+
+Einloggen wie in 6.3, dann auf dem Server:
+
+```bash
+mkdir -p ~/.ssh
+nano ~/.ssh/authorized_keys
+```
+
+`nano` ist ein kleiner Texteditor im Terminal. Deine kopierte Key-Zeile einfügen (Rechtsklick oder `Strg + Shift + V`), dann `Strg + O` (speichern), Enter, `Strg + X` (beenden). Zum Schluss die Rechte setzen — SSH ist da pingelig:
+
+```bash
+chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys
+```
+
+Die Datei `authorized_keys` ist einfach eine Liste: eine Zeile pro erlaubtem Schlüssel. Zweiter Laptop? Zweite Zeile.
+
+### 6.6 Testen — der wichtigste Schritt
+
+Neues Terminal-Fenster auf deinem Laptop, dann:
+
+```bash
+ssh root@203.0.113.42
+```
+
+Wenn du jetzt **nur nach der Passphrase deines Keys** gefragt wirst (oder gar nicht, falls du keine gesetzt hast) — und nicht mehr nach dem Server-Passwort — dann funktioniert dein Key. **Erst jetzt** darf das Script später den Passwort-Login abschalten. Das Preflight-Gate prüft das übrigens auch: Findet es keinen Key in `authorized_keys`, lässt es SSH in Ruhe.
+
+Fragt er weiterhin nach dem Server-Passwort? Dann hat der Key nicht geklappt. Meistens: Zeile nicht komplett kopiert, oder die Rechte aus Weg C fehlen. Kein Drama — der Passwort-Login ist ja noch da. Nochmal 6.5.
+
+### 6.7 Es dir leichter machen: die SSH-Config
+
+Statt jedes Mal `ssh root@203.0.113.42` zu tippen, gibst du deinem Server einen Namen. Auf dem Laptop:
+
+```bash
+nano ~/.ssh/config
+```
+
+Reinschreiben:
+
+```
+Host coolify
+    HostName 203.0.113.42
+    User root
+    IdentityFile ~/.ssh/id_ed25519
+```
+
+Speichern (`Strg + O`, Enter, `Strg + X`). Ab jetzt reicht:
+
+```bash
+ssh coolify
+```
+
+Das ist keine Kosmetik. Wenn dein Server nach dem Script nur noch durch den VPN-Tunnel erreichbar ist, trägst du hier einfach die Tunnel-Adresse ein und der Rest bleibt gleich.
+
+### 6.8 `sudo` — „mach das als Chef"
+
+Auf dem Server gibt es Befehle, die nur der Chef (Root) ausführen darf: Firewall ändern, Programme installieren, Systemdateien anfassen. Wenn du als `root` eingeloggt bist, darfst du das sowieso. Wenn du als normaler Benutzer eingeloggt bist, stellst du `sudo` davor:
+
+```bash
+sudo ./install.sh
+```
+
+Das heißt: „Führe `./install.sh` mit Chef-Rechten aus." Das `./` davor bedeutet „die Datei hier in diesem Ordner". Beides zusammen: „Starte die Datei install.sh aus diesem Ordner als Chef."
+
+Falls du als `root` eingeloggt bist, schadet das `sudo` nicht — es ist dann einfach überflüssig.
+
+### 6.9 Zwei Fenster — deine Lebensversicherung
+
+Der Rückfall-Timer aus [Abschnitt 8](#8-der-rückfall-timer--warum-du-dich-nicht-aussperren-kannst) funktioniert nur, wenn du in einem **neuen** Fenster testest. Deshalb hier die Gewohnheit, die du dir angewöhnen solltest, bevor du irgendwas am Server änderst:
+
+1. **Fenster 1:** eingeloggt, hier läuft das Script.
+2. **Fenster 2:** leer, bereit. Sobald das Script „Teste JETZT" sagt: hier `ssh coolify` tippen.
+
+Klappt der Login in Fenster 2 → zurück in Fenster 1, `--confirm`. Klappt er nicht → nichts tun, warten.
+
+Warum das alte Fenster nicht zählt: Eine bestehende Verbindung ist wie jemand, der schon im Haus ist. Wenn du die Tür abschließt, bleibt er drin. Ob die Tür für *neue* Besucher aufgeht, siehst du nur, wenn jemand von außen klingelt — das ist Fenster 2.
+
+### 6.10 Fehlermeldungen, die du sehen wirst — und was sie bedeuten
+
+| Meldung | Bedeutet | Was tun |
+| --- | --- | --- |
+| `Connection refused` | Der Server antwortet, aber die SSH-Tür (Port 22) ist zu. | Firewall? Falscher Port? Nach dem Script: bist du im VPN-Tunnel? |
+| `Connection timed out` | Keine Antwort. | IP falsch? Server aus? Firewall blockt komplett? → Rescue-Konsole, [NOTFALL.md](NOTFALL.md). |
+| `Permission denied (publickey)` | Der Server will nur noch Keys, deiner passt nicht. | Key nicht hinterlegt oder falscher Key. Mit `ssh -i ~/.ssh/id_ed25519 …` den richtigen erzwingen. |
+| `Permission denied, please try again` | Passwort falsch. | Nochmal. Beim Tippen siehst du nichts — das ist normal. |
+| `Too many authentication failures` | Dein Rechner hat zu viele Keys angeboten. | `ssh -o IdentitiesOnly=yes -i ~/.ssh/id_ed25519 root@…` |
+| `REMOTE HOST IDENTIFICATION HAS CHANGED` | Der Fingerabdruck passt nicht mehr zum gespeicherten. | Nach einer Neuinstallation des Servers normal. Sonst: stutzig werden. Die angegebene Zeile aus `~/.ssh/known_hosts` löschen. |
+| `command not found` | Tippfehler oder Programm nicht installiert. | Befehl nochmal genau abtippen. Groß/Klein beachten. |
+| `Permission denied` bei einem Befehl | Dir fehlen Chef-Rechte. | `sudo` davor. |
+| `No such file or directory` | Die Datei ist nicht in diesem Ordner. | `pwd` zeigt, wo du bist; `ls` zeigt, was hier liegt; `cd coolify-shield` wechselt in den Ordner. |
+
+### 6.11 Was da sonst noch auf dem Server läuft
+
+Ein paar Namen, die dir im Script begegnen. Du musst sie nicht bedienen können — nur wissen, was sie sind.
+
+**Docker und Container.** Docker verpackt jedes Programm in eine eigene abgeschlossene Kiste, den *Container*. Coolify läuft in einem Container, deine Apps laufen in Containern, das VPN wird ein Container. Vorteil: Sie kommen sich nicht in die Quere, und man kann sie einzeln starten, stoppen, löschen. `docker ps` zeigt, welche gerade laufen.
+
+**Traefik.** Der Verteiler. Wenn ein Besucher `deine-app.de` aufruft, kommt die Anfrage an Port 80 oder 443 an — und Traefik schaut, welcher Container dafür zuständig ist, und reicht sie weiter. Coolify steuert Traefik für dich. Das Script legt Traefik später eine Regel hin: „Das Dashboard nur aus dem Tunnel ausliefern."
+
+**wg-easy.** Das VPN-Programm als Container, mit einer kleinen Weboberfläche, auf der du Geräte anlegst und QR-Codes bekommst.
+
+**systemd.** Der Dienst-Manager von Linux. Er startet Programme beim Hochfahren und — wichtig für uns — er kann **Timer** stellen. Der Rückfall-Timer ist ein systemd-Timer.
+
+**ufw / firewalld.** Die Firewall-Programme. Welches dein Server hat, hängt vom Linux ab; das Script erkennt es.
+
+**Logs.** Protokolldateien, in die Programme reinschreiben, was sie tun. Das Script schreibt nach `/var/log/coolify-shield.log`. Anschauen: `cat /var/log/coolify-shield.log` (alles) oder `tail -20 /var/log/coolify-shield.log` (die letzten 20 Zeilen).
+
+### 6.12 Die zehn Befehle, die du wirklich brauchst
+
+| Befehl | Macht |
+| --- | --- |
+| `ssh coolify` | verbinden |
+| `exit` | Verbindung beenden |
+| `pwd` | „Wo bin ich?" — zeigt den aktuellen Ordner |
+| `ls` | „Was liegt hier?" — Dateien im Ordner |
+| `cd coolify-shield` | in einen Ordner wechseln (`cd ..` = einen zurück) |
+| `cat datei` | Datei anzeigen |
+| `less datei` | Datei blätterbar anzeigen (`q` zum Beenden) |
+| `nano datei` | Datei bearbeiten (`Strg + O` speichern, `Strg + X` raus) |
+| `sudo befehl` | als Chef ausführen |
+| `docker ps` | laufende Container zeigen |
+
+Mehr brauchst du für coolify-shield nicht. Alles andere macht das Script.
+
+---
+
+## 7. Was das Script macht — Schritt für Schritt erklärt
 
 Das Script läuft in **Phasen**. Jede Phase hat einen Namen, und nach jeder Phase sagt dir das Script, an welcher Stelle im Kurs es weitergeht. Hier ist, was in jeder Phase passiert und **warum**.
 
@@ -282,7 +530,7 @@ Vorher wird die Einstellungsdatei gesichert. Danach wird geprüft, ob die Datei 
 
 ---
 
-## 7. Der Rückfall-Timer — warum du dich nicht aussperren kannst
+## 8. Der Rückfall-Timer — warum du dich nicht aussperren kannst
 
 Das ist der Teil, der coolify-shield von jeder Anleitung und jedem anderen Script unterscheidet. Bitte lies ihn ganz.
 
@@ -328,7 +576,7 @@ Dann gibt es [NOTFALL.md](NOTFALL.md). Erster Schritt dort: **12 Minuten warten.
 
 ---
 
-## 8. Was du selbst klicken musst (und warum das Script das nicht kann)
+## 9. Was du selbst klicken musst (und warum das Script das nicht kann)
 
 Drei Dinge kann das Script **nicht** für dich erledigen. Nicht, weil es technisch unmöglich wäre — sondern weil es dafür in Coolifys interne Datenbank schreiben müsste. Und ein Script, das hunderte Leute auf ihren Servern laufen lassen, hat in einer fremden Datenbank **nichts zu suchen.** Wenn da etwas schiefgeht, ist dein Coolify kaputt. Das Risiko gehen wir nicht ein.
 
@@ -358,13 +606,13 @@ Deshalb: **3 Minuten Klickarbeit für dich.** Der Report listet sie dir am Ende 
 
 ---
 
-## 9. Der komplette Ablauf — was du wann tippst
+## 10. Der komplette Ablauf — was du wann tippst
 
 Hier der ganze Weg, von Anfang bis Ende. Alle Befehle werden **auf dem Server** getippt, nachdem du dich per SSH verbunden hast.
 
 ### Vorbereitung (einmalig, ca. 10 Minuten)
 
-1. **SSH-Key erstellen und hinterlegen.** Wie das geht, zeigt der Kurs (Modul 3). Kurzversion: Auf deinem Laptop `ssh-keygen -t ed25519` tippen, dann den öffentlichen Teil beim Hoster oder auf dem Server hinterlegen. **Teste, dass der Login mit Key funktioniert, bevor du weitermachst.**
+1. **SSH-Key erstellen und hinterlegen.** Schritt für Schritt in [Abschnitt 6.4 bis 6.6](#64-einen-ssh-key-erzeugen), im Kurs in Modul 3. **Teste, dass der Login mit Key funktioniert, bevor du weitermachst.**
 2. **Rescue-Konsole finden.** Bei deinem Hoster einloggen, die Konsole (siehe [NOTFALL.md](NOTFALL.md)) einmal öffnen, einmal einloggen. Tab offen lassen.
 3. **Per SSH auf den Server.** In deinem Terminal auf dem Laptop, **nicht** im Coolify-Web-Terminal.
 
@@ -426,7 +674,7 @@ sudo ./install.sh --undo
 
 ---
 
-## 10. Was du danach anders machst
+## 11. Was du danach anders machst
 
 Ein paar Dinge ändern sich in deinem Alltag:
 
@@ -437,7 +685,7 @@ Ein paar Dinge ändern sich in deinem Alltag:
 
 ---
 
-## 11. Häufige Fragen
+## 12. Häufige Fragen
 
 **Ich habe Angst, dass ich meinen Server kaputtmache.**
 Deshalb gibt es den Trockenlauf, den Rückfall-Timer, die Backups und die Rescue-Konsole. Fünf Sicherheitsnetze. Wenn du die Reihenfolge einhältst (Key testen → Rescue-Konsole öffnen → Trockenlauf → `--apply` → im **neuen** Fenster testen → `--confirm`), kann faktisch nichts passieren, was sich nicht innerhalb von 10 Minuten von selbst repariert.
@@ -486,26 +734,33 @@ In der [AIIANER-Community](https://aiianer.de). Schick die Datei `/var/log/cooli
 
 ---
 
-## 12. Glossar
+## 13. Glossar
 
 | Begriff | Bedeutet |
 | --- | --- |
+| **authorized_keys** | Die Liste auf dem Server, in der die erlaubten öffentlichen Schlüssel stehen — eine Zeile pro Schlüssel |
 | **Bot** | Automatisches Programm, das ohne Menschen im Internet Adressen abklopft und Passwörter probiert |
 | **Brute Force** | „Rohe Gewalt": Passwörter so lange durchprobieren, bis eins passt |
+| **Container** | Abgeschlossene „Kiste" für ein Programm (Docker). Coolify, deine Apps und das VPN laufen je in einem |
 | **CrowdSec / fail2ban** | Programme, die Brute-Force-Versuche erkennen und den Angreifer sperren |
 | **Dashboard** | Die Weboberfläche von Coolify |
 | **DSGVO** | Datenschutz-Grundverordnung — das EU-Datenschutzgesetz. Relevant, sobald du Daten anderer Menschen verarbeitest |
 | **Firewall** | Türsteher, der entscheidet, welche Ports für wen offen sind |
 | **Hoster** | Die Firma, bei der du den Server gemietet hast |
+| **IP-Adresse** | Die Nummer, unter der dein Server im Internet erreichbar ist, z. B. `203.0.113.42` |
 | **Idempotent** | Kann beliebig oft laufen, ohne etwas doppelt zu tun oder kaputtzumachen |
 | **Key (SSH-Key)** | Kryptografischer Schlüssel für den Login, der sich nicht erraten lässt |
+| **Passphrase** | Passwort für deinen privaten SSH-Key. Schützt den Key, falls dein Laptop wegkommt |
+| **Öffentlicher / privater Schlüssel** | Das Schlüsselpaar hinter SSH: der öffentliche kommt auf den Server, der private bleibt bei dir und wird nie weitergegeben |
 | **Port** | Nummerierte „Tür" am Server, hinter der ein Dienst läuft |
+| **Prompt** | Die Eingabezeile im Terminal, die auf deinen Befehl wartet |
 | **Rescue-Konsole** | Notzugang beim Hoster, der am Netzwerk vorbeigeht |
 | **Root** | Der Benutzer, der auf dem Server alles darf |
 | **Rückfall-Timer / Watchdog** | Timer, der eine Änderung von selbst zurücknimmt, wenn du sie nicht bestätigst |
 | **Script** | Textdatei mit Befehlen, die nacheinander ausgeführt werden |
 | **SSH** | Verschlüsselte Fernsteuerung für deinen Server |
 | **sudo** | „Führe diesen Befehl als Chef aus" |
+| **systemd** | Dienst-Manager von Linux; stellt unter anderem den Rückfall-Timer |
 | **Terminal** | Das Fenster, in dem du Befehle tippst |
 | **Traefik** | Der „Verteiler" in Coolify, der eingehende Web-Anfragen an die richtige App weiterreicht |
 | **Trockenlauf (Dry-Run)** | Zeigt, was passieren würde, tut aber nichts |
