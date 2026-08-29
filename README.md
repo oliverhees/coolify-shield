@@ -2,6 +2,8 @@
 
 **🚧 STATUS: GERÜST v0.1.0 — noch nicht auf Produktivsystemen einsetzen**
 
+![coolify-shield — Dein Server. Deine Tür. Dein Schlüssel.](docs/assets/coolify-shield-release.jpg)
+
 # 🛡️ COOLIFY-SHIELD
 
 **Härtet deinen Coolify-Server ab — ohne dass du dich dabei aussperrst.**
