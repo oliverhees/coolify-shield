@@ -71,7 +71,7 @@ Stell dir vor, dein Haus hätte eine Tür, hinter der der Tresor, alle Dokumente
 So sieht das aus — heute, und nachdem das Script durchgelaufen ist:
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph heute["😱 Heute: alles offen"]
         direction LR
         B1["🤖 Bots aus dem<br/>ganzen Internet"] -->|"Port 8000<br/>Login-Seite"| D1["Coolify-Dashboard<br/>= Root auf dem Server"]

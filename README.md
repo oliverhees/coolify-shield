@@ -64,7 +64,7 @@ Die Anleitungen dafür gibt es längst. Das eigentliche Problem ist die **Reihen
 coolify-shield ist ein Bash-Wizard, der genau das verhindert. Er ist für Leute gebaut, die **keine** Linux-Admins sind: Er fragt im Klartext, die sicherste Antwort ist der Default, Enter drücken reicht. Und bevor er irgendetwas Riskantes tut, macht er einen Timer scharf, der die Änderung von selbst zurücknimmt, falls du nicht bestätigst, dass du noch reinkommst.
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph heute["😱 Heute: alles offen"]
         direction LR
         B1["🤖 Bots aus dem<br/>ganzen Internet"] -->|"Port 8000<br/>Login-Seite"| D1["Coolify-Dashboard<br/>= Root auf dem Server"]
