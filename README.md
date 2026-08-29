@@ -15,7 +15,7 @@
 
 *Ein Befehl. Trockenlauf als Standard. Vor jedem riskanten Schritt ein Rückfall-Timer, der alles von selbst zurückrollt, wenn du nicht mehr reinkommst.*
 
-[Quickstart](#-quickstart) · [Sicherheitsnetz](#️-das-sicherheitsnetz) · [Architektur](#-architektur) · [Ich bin ausgesperrt](NOTFALL.md) · [Entstehung](docs/ENTSTEHUNG.md) · [Lizenz](#-lizenz)
+[**Für Anfänger: hier starten**](ANFAENGER.md) · [Quickstart](#-quickstart) · [Sicherheitsnetz](#️-das-sicherheitsnetz) · [Architektur](#-architektur) · [Ich bin ausgesperrt](NOTFALL.md) · [Entstehung](docs/ENTSTEHUNG.md) · [Lizenz](#-lizenz)
 
 </div>
 
@@ -23,6 +23,7 @@
 
 ## Inhaltsverzeichnis
 
+- [👉 Noch nie einen Server verwaltet? → ANFAENGER.md](ANFAENGER.md)
 - [Warum coolify-shield](#warum-coolify-shield)
 - [Was uns unterscheidet](#-was-uns-unterscheidet)
 - [Features](#-features)
@@ -89,6 +90,8 @@ coolify-shield ist ein Bash-Wizard, der genau das verhindert. Er ist für Leute 
 - **Ein klarer Satz statt Stacktrace.** Jeder Abbruch sagt, *was* fehlt und *was zu tun ist*.
 
 ## 🚀 Quickstart
+
+> **Anfänger?** Lies zuerst [ANFAENGER.md](ANFAENGER.md) — dort wird jeder Schritt und jeder Begriff von Null erklärt.
 
 ```bash
 # 1. Holen — und lesen. Es läuft als root.
@@ -186,6 +189,7 @@ coolify-shield/
 │   ├── 40-firewall.sh      Phase B2 · ufw / firewalld — mit Watchdog
 │   ├── 50-wireguard.sh     Phase B3 · wg-easy — mit Watchdog
 │   └── 99-report.sh        Phase 9 · HTML-Report mit Score
+├── ANFAENGER.md            ← für Einsteiger: alles von Null erklärt
 ├── NOTFALL.md              ← die wichtigste Datei im Repo
 ├── docs/ENTSTEHUNG.md      der Chat, aus dem das Projekt hervorging
 └── .github/workflows/      shellcheck bei jedem Push

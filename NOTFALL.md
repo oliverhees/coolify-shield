@@ -2,6 +2,8 @@
 
 Ruhig bleiben. Lies das hier zu Ende, bevor du irgendwas anfasst.
 
+> Begriffe unklar (Rescue-Konsole, SSH, Firewall)? Alles erklärt in [ANFAENGER.md](ANFAENGER.md).
+
 ---
 
 ## Zuerst: Hast du gewartet?
