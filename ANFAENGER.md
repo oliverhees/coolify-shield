@@ -68,6 +68,28 @@ Und das Login zu diesem Dashboard liegt bei den meisten Leuten **öffentlich im 
 
 Stell dir vor, dein Haus hätte eine Tür, hinter der der Tresor, alle Dokumente und die Autoschlüssel liegen — und diese Tür stünde an einer belebten Straße, mit einem Zahlenschloss, an dem den ganzen Tag Fremde herumprobieren dürfen. Das ist dein Coolify-Dashboard ohne Schutz.
 
+So sieht das aus — heute, und nachdem das Script durchgelaufen ist:
+
+```mermaid
+flowchart LR
+    subgraph heute["😱 Heute: alles offen"]
+        direction LR
+        B1["🤖 Bots aus dem<br/>ganzen Internet"] -->|"Port 8000<br/>Login-Seite"| D1["Coolify-Dashboard<br/>= Root auf dem Server"]
+        B1 -->|"Port 22<br/>Passwort raten"| S1["SSH"]
+    end
+    subgraph danach["🛡️ Nach coolify-shield"]
+        direction LR
+        B2["🤖 Bots"] -->|"Port 80/443"| W2["deine Apps<br/>(sollen erreichbar sein)"]
+        B2 -.->|"Port 8000: existiert nicht mehr"| X2(("❌"))
+        B2 -.->|"Port 22: nur mit Key,<br/>nur aus dem Tunnel"| X3(("❌"))
+        DU["📱 Du mit<br/>WireGuard-Tunnel"] ==>|"verschlüsselt"| D2["Coolify-Dashboard"]
+        DU ==> S2["SSH"]
+    end
+    style D1 fill:#c62828,color:#fff
+    style D2 fill:#2e7d32,color:#fff
+    style S2 fill:#2e7d32,color:#fff
+```
+
 ---
 
 ## 4. Wer greift dich überhaupt an?
@@ -149,6 +171,24 @@ Ein Script ist eine Textdatei mit Befehlen, die nacheinander ausgeführt werden.
 
 Das Script läuft in **Phasen**. Jede Phase hat einen Namen, und nach jeder Phase sagt dir das Script, an welcher Stelle im Kurs es weitergeht. Hier ist, was in jeder Phase passiert und **warum**.
 
+```mermaid
+flowchart TD
+    P0["Phase 0 · Preflight<br/><i>Darf ich hier loslegen?</i>"] --> P1["Phase 1 · Bestandsaufnahme<br/><i>Wie schlimm ist es?</i>"]
+    P1 --> PA["Phase A · Grundlagen<br/>Auto-Updates · Brute-Force-Schutz"]
+    PA --> B3["Phase B3 · VPN-Tunnel bauen<br/>⏱ mit Rückfall-Timer"]
+    B3 --> B1["Phase B1 · SSH härten<br/>⏱ mit Rückfall-Timer"]
+    B1 --> B2["Phase B2 · Firewall zu<br/>⏱ mit Rückfall-Timer"]
+    B2 --> P9["Phase 9 · Report<br/>Score 0–100 + Restliste"]
+    P9 --> DU["👆 Du: 2FA · Registrierung aus · Passwort"]
+    style P0 fill:#455a64,color:#fff
+    style P1 fill:#455a64,color:#fff
+    style PA fill:#2e7d32,color:#fff
+    style B3 fill:#ef6c00,color:#fff
+    style B1 fill:#ef6c00,color:#fff
+    style B2 fill:#ef6c00,color:#fff
+    style P9 fill:#1565c0,color:#fff
+```
+
 ### Phase 0 · Preflight — „Darf ich hier überhaupt loslegen?"
 
 **Was passiert:** Das Script schaut sich um, **ändert aber nichts.** Es prüft:
@@ -190,6 +230,20 @@ Geprüft wird zum Beispiel: Ist der Passwort-Login per SSH noch an? Läuft eine 
 **Was passiert:** Das Script installiert wg-easy (dein VPN), legt den ersten Zugang für dein Handy an und zeigt dir **direkt im Terminal einen QR-Code**. Den scannst du mit der WireGuard-App auf dem Handy. Ab dann kannst du mit einem Fingertipp „in den Tunnel" und bist damit quasi *im* Server-Netz.
 
 **Warum vor der Firewall:** Das ist der wichtigste Punkt in der ganzen Reihenfolge. Wenn wir *erst* die Türen schließen und *dann* den Tunnel bauen wollen — haben wir keinen Weg mehr rein, um den Tunnel zu bauen. **Erst den Notausgang bauen, dann die Haustür abschließen.** Immer.
+
+```mermaid
+flowchart LR
+    subgraph falsch["❌ Falsche Reihenfolge"]
+        direction LR
+        F1["Firewall zu"] --> F2["VPN bauen wollen"] --> F3["… kein Weg mehr rein.<br/>Ausgesperrt."]
+    end
+    subgraph richtig["✅ coolify-shield"]
+        direction LR
+        R1["VPN-Tunnel bauen"] --> R2["testen: komme ich<br/>durch den Tunnel?"] --> R3["erst dann:<br/>Firewall zu"]
+    end
+    style F3 fill:#c62828,color:#fff
+    style R3 fill:#2e7d32,color:#fff
+```
 
 ### Phase B1 · SSH härten — „Nur noch mit Schlüssel, nicht mehr mit Passwort"
 
@@ -246,10 +300,18 @@ Das Script benutzt einen Trick, den Netzwerk-Profis seit Jahrzehnten benutzen, w
 4. **Klappt es?** Dann tippst du `sudo ./install.sh --confirm`. Das sagt dem Timer: „Alles gut, du kannst dich abschalten." Die Änderung bleibt.
 5. **Klappt es nicht?** Dann tust du **gar nichts.** Du wartest. Nach 10 Minuten läuft der Timer ab, der Server macht die Änderung von selbst rückgängig, und du kommst wieder rein. Als wäre nichts gewesen.
 
-```
-Timer stellen (10 min)  →  Änderung machen  →  du testest im NEUEN Fenster
-                                                  ├─ klappt:       --confirm  → Änderung bleibt
-                                                  └─ klappt nicht: nichts tun → in 10 min alles zurück
+```mermaid
+flowchart TD
+    A["⏱ Rückfall-Timer stellen<br/>10 Minuten"] --> B["Änderung durchführen<br/>z. B. Passwort-Login aus"]
+    B --> C{"Du testest im<br/><b>NEUEN</b> Terminal-Fenster:<br/>komme ich noch rein?"}
+    C -->|"✅ ja"| D["sudo ./install.sh --confirm"]
+    D --> E["Timer aus.<br/>Änderung bleibt."]
+    C -->|"❌ nein"| F["Nichts tun. Warten."]
+    F --> G["Nach 10 Minuten:<br/>Server macht die Änderung<br/><b>von selbst rückgängig</b>"]
+    G --> H["Du kommst wieder rein.<br/>Als wäre nichts gewesen."]
+    style E fill:#2e7d32,color:#fff
+    style H fill:#2e7d32,color:#fff
+    style C fill:#f9a825,color:#000
 ```
 
 ### Die eine Sache, auf die 80 % reinfallen
@@ -378,7 +440,25 @@ Ein paar Dinge ändern sich in deinem Alltag:
 ## 11. Häufige Fragen
 
 **Ich habe Angst, dass ich meinen Server kaputtmache.**
-Deshalb gibt es den Trockenlauf, den Rückfall-Timer, die Backups und die Rescue-Konsole. Vier Sicherheitsnetze. Wenn du die Reihenfolge einhältst (Key testen → Rescue-Konsole öffnen → Trockenlauf → `--apply` → im **neuen** Fenster testen → `--confirm`), kann faktisch nichts passieren, was sich nicht innerhalb von 10 Minuten von selbst repariert.
+Deshalb gibt es den Trockenlauf, den Rückfall-Timer, die Backups und die Rescue-Konsole. Fünf Sicherheitsnetze. Wenn du die Reihenfolge einhältst (Key testen → Rescue-Konsole öffnen → Trockenlauf → `--apply` → im **neuen** Fenster testen → `--confirm`), kann faktisch nichts passieren, was sich nicht innerhalb von 10 Minuten von selbst repariert.
+
+```mermaid
+flowchart TD
+    subgraph netz["Fünf Sicherheitsnetze — jedes fängt, was das vorherige durchlässt"]
+        direction TB
+        S1["1 · Trockenlauf als Standard<br/>ohne --apply passiert nichts"]
+        S2["2 · Preflight-Gate<br/>fehlt eine Voraussetzung → Abbruch, bevor etwas geändert wird"]
+        S3["3 · Rückfall-Timer<br/>riskante Änderung rollt nach 10 min von selbst zurück"]
+        S4["4 · Backups + --undo<br/>jede Datei vorher gesichert"]
+        S5["5 · Rescue-Konsole des Hosters<br/>geht am Netzwerk vorbei — NOTFALL.md"]
+        S1 --> S2 --> S3 --> S4 --> S5
+    end
+    style S1 fill:#e3f2fd,color:#000
+    style S2 fill:#bbdefb,color:#000
+    style S3 fill:#90caf9,color:#000
+    style S4 fill:#64b5f6,color:#000
+    style S5 fill:#1e88e5,color:#fff
+```
 
 **Muss ich wirklich ein VPN? Reicht nicht 2FA?**
 2FA schützt den Login. Das VPN versteckt ihn. Beides zusammen ist richtig gut. Nur 2FA ist okay, aber deine Login-Seite hängt weiter offen im Netz, und jede Software hat irgendwann eine Lücke. Wenn die Seite nicht erreichbar ist, kann die Lücke nicht ausgenutzt werden.

@@ -61,6 +61,26 @@ Die Anleitungen dafür gibt es längst. Das eigentliche Problem ist die **Reihen
 
 coolify-shield ist ein Bash-Wizard, der genau das verhindert. Er ist für Leute gebaut, die **keine** Linux-Admins sind: Er fragt im Klartext, die sicherste Antwort ist der Default, Enter drücken reicht. Und bevor er irgendetwas Riskantes tut, macht er einen Timer scharf, der die Änderung von selbst zurücknimmt, falls du nicht bestätigst, dass du noch reinkommst.
 
+```mermaid
+flowchart LR
+    subgraph heute["😱 Heute: alles offen"]
+        direction LR
+        B1["🤖 Bots aus dem<br/>ganzen Internet"] -->|"Port 8000<br/>Login-Seite"| D1["Coolify-Dashboard<br/>= Root auf dem Server"]
+        B1 -->|"Port 22<br/>Passwort raten"| S1["SSH"]
+    end
+    subgraph danach["🛡️ Nach coolify-shield"]
+        direction LR
+        B2["🤖 Bots"] -->|"Port 80/443"| W2["deine Apps<br/>(sollen erreichbar sein)"]
+        B2 -.->|"Port 8000: existiert nicht mehr"| X2(("❌"))
+        B2 -.->|"Port 22: nur mit Key,<br/>nur aus dem Tunnel"| X3(("❌"))
+        DU["📱 Du mit<br/>WireGuard-Tunnel"] ==>|"verschlüsselt"| D2["Coolify-Dashboard"]
+        DU ==> S2["SSH"]
+    end
+    style D1 fill:#c62828,color:#fff
+    style D2 fill:#2e7d32,color:#fff
+    style S2 fill:#2e7d32,color:#fff
+```
+
 ## 🏆 Was uns unterscheidet
 
 | | Manuelle Anleitung / Blogpost | Klassisches Hardening-Script | coolify-shield |
@@ -135,6 +155,24 @@ sudo ./install.sh --confirm
 
 Fünf Mechanismen, die zusammen dafür sorgen, dass ein Anfänger dieses Script laufen lassen kann, ohne sich den Server kaputtzumachen.
 
+```mermaid
+flowchart TD
+    subgraph netz["Fünf Sicherheitsnetze — jedes fängt, was das vorherige durchlässt"]
+        direction TB
+        S1["1 · Trockenlauf als Standard<br/>ohne --apply passiert nichts"]
+        S2["2 · Preflight-Gate<br/>fehlt eine Voraussetzung → Abbruch, bevor etwas geändert wird"]
+        S3["3 · Rückfall-Timer<br/>riskante Änderung rollt nach 10 min von selbst zurück"]
+        S4["4 · Backups + --undo<br/>jede Datei vorher gesichert"]
+        S5["5 · Rescue-Konsole des Hosters<br/>geht am Netzwerk vorbei — NOTFALL.md"]
+        S1 --> S2 --> S3 --> S4 --> S5
+    end
+    style S1 fill:#e3f2fd,color:#000
+    style S2 fill:#bbdefb,color:#000
+    style S3 fill:#90caf9,color:#000
+    style S4 fill:#64b5f6,color:#000
+    style S5 fill:#1e88e5,color:#fff
+```
+
 ### 1. Trockenlauf als Standard
 
 `DRY_RUN=1` ist der Ausgangszustand. Jeder ändernde Befehl läuft durch einen `run`-Wrapper, der im Trockenlauf nur `[trocken] <befehl>` ausgibt. Erst `--apply` setzt `DRY_RUN=0`.
@@ -143,10 +181,18 @@ Fünf Mechanismen, die zusammen dafür sorgen, dass ein Anfänger dieses Script 
 
 Das Herzstück — das Muster von `reload in 10` bei Cisco-Switches:
 
-```
-Änderung setzen  →  Timer scharf (10 min)  →  du testest im ZWEITEN Terminal
-                                                 ├─ klappt  → --confirm entschärft den Timer
-                                                 └─ klappt nicht → nichts tun, Timer rollt zurück
+```mermaid
+flowchart TD
+    A["⏱ Rückfall-Timer stellen<br/>10 Minuten"] --> B["Änderung durchführen<br/>z. B. Passwort-Login aus"]
+    B --> C{"Du testest im<br/><b>NEUEN</b> Terminal-Fenster:<br/>komme ich noch rein?"}
+    C -->|"✅ ja"| D["sudo ./install.sh --confirm"]
+    D --> E["Timer aus.<br/>Änderung bleibt."]
+    C -->|"❌ nein"| F["Nichts tun. Warten."]
+    F --> G["Nach 10 Minuten:<br/>Server macht die Änderung<br/><b>von selbst rückgängig</b>"]
+    G --> H["Du kommst wieder rein.<br/>Als wäre nichts gewesen."]
+    style E fill:#2e7d32,color:#fff
+    style H fill:#2e7d32,color:#fff
+    style C fill:#f9a825,color:#000
 ```
 
 Umgesetzt mit `systemd-run --on-active`, Fallback auf `at`. Gibt es keinen von beiden, **wird nichts Riskantes geändert** — das Preflight-Gate bricht ab. Der Watchdog wird immer *vor* der Änderung scharf gemacht, nie danach.
@@ -207,6 +253,24 @@ coolify-shield/
 
 ## 🔁 Ablauf der Phasen
 
+```mermaid
+flowchart TD
+    P0["Phase 0 · Preflight<br/><i>Darf ich hier loslegen?</i>"] --> P1["Phase 1 · Bestandsaufnahme<br/><i>Wie schlimm ist es?</i>"]
+    P1 --> PA["Phase A · Grundlagen<br/>Auto-Updates · Brute-Force-Schutz"]
+    PA --> B3["Phase B3 · VPN-Tunnel bauen<br/>⏱ mit Rückfall-Timer"]
+    B3 --> B1["Phase B1 · SSH härten<br/>⏱ mit Rückfall-Timer"]
+    B1 --> B2["Phase B2 · Firewall zu<br/>⏱ mit Rückfall-Timer"]
+    B2 --> P9["Phase 9 · Report<br/>Score 0–100 + Restliste"]
+    P9 --> DU["👆 Du: 2FA · Registrierung aus · Passwort"]
+    style P0 fill:#455a64,color:#fff
+    style P1 fill:#455a64,color:#fff
+    style PA fill:#2e7d32,color:#fff
+    style B3 fill:#ef6c00,color:#fff
+    style B1 fill:#ef6c00,color:#fff
+    style B2 fill:#ef6c00,color:#fff
+    style P9 fill:#1565c0,color:#fff
+```
+
 | Phase | Modul | Risiko | Was passiert |
 | --- | --- | --- | --- |
 | **0 · Preflight** | `00-preflight.sh` | keins | prüft alles, ändert nichts, bricht ab wenn etwas fehlt |
@@ -218,6 +282,20 @@ coolify-shield/
 | **9 · Report** | `99-report.sh` | keins | HTML mit Ampel, Score und Restliste |
 
 **Die Reihenfolge ist nicht verhandelbar:** VPN läuft *vor* SSH und Firewall. Sonst macht die Firewall den Weg zu, bevor der VPN-Weg existiert — der klassische Aussperr-Fehler.
+
+```mermaid
+flowchart LR
+    subgraph falsch["❌ Falsche Reihenfolge"]
+        direction LR
+        F1["Firewall zu"] --> F2["VPN bauen wollen"] --> F3["… kein Weg mehr rein.<br/>Ausgesperrt."]
+    end
+    subgraph richtig["✅ coolify-shield"]
+        direction LR
+        R1["VPN-Tunnel bauen"] --> R2["testen: komme ich<br/>durch den Tunnel?"] --> R3["erst dann:<br/>Firewall zu"]
+    end
+    style F3 fill:#c62828,color:#fff
+    style R3 fill:#2e7d32,color:#fff
+```
 
 **Geplantes Zielbild der Firewall:**
 
