@@ -452,7 +452,7 @@ Voraussetzung: systemd (für den Watchdog) — ohne systemd Fallback auf das Pak
 
 - [x] `start.sh` — Laptop-Wizard für Mac und Linux: Schlüssel, `~/.ssh/config`, Hetzner-Anleitung, Login-Test, Upload, Neustart-Behandlung, Prüfung von außen mit `--confirm`, WireGuard auf dem Laptop
 - [x] `start.ps1` — dasselbe für Windows (entsteht parallel, siehe Quickstart)
-- [x] `install.sh` — alle Modi (`--setup`, `--apply`, `--audit`, `--confirm`, `--undo`, `--status`, `--phase`, `--yes`, `--force`, `--no-cues`)
+- [x] `install.sh` — alle Modi (`--setup`, `--apply`, `--audit`, `--confirm`, `--undo`, `--status`, `--phase`, `--yes`, `--force`)
 - [x] `00-common.sh` — Logging, Fragen mit sicherem Default, `run`-Dry-Run-Wrapper, `backup_file`, Zustandsspeicher, Distro-Erkennung, `pkg_install`, **Watchdog** (systemd-run mit `at`-Fallback), `next_up`, `laptop.env`
 - [x] `00-preflight.sh` — komplettes Gate inkl. Web-Terminal-Erkennung und SSH-Key-Zählung, weiß im `--setup`-Weg, dass Coolify erst später kommt
 - [x] `05-updates.sh` — Updates, Grundpakete, Zeitzone, Swap, Neustart-Flag
