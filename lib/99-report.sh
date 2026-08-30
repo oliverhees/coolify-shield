@@ -44,7 +44,7 @@ phase_report() {
     for zeile in "${AUDIT_ROWS[@]}"; do
       # shellcheck disable=SC2034
       IFS='|' read -r _ titel status text wer <<< "$zeile"
-      [ "$wer" = "user" ] && printf '   □ %s: %s\n' "$titel" "$text"
+      [ "$wer" = "user" ] && [ "$status" != "gruen" ] && printf '   □ %s: %s\n' "$titel" "$text"
     done
   fi
 

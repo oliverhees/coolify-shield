@@ -6,7 +6,7 @@
 
 # 🛡️ COOLIFY-SHIELD
 
-**Härtet deinen Coolify-Server ab — ohne dass du dich dabei aussperrst.**
+**Vom leeren Hetzner-Server zum abgesicherten Coolify: ein Befehl auf dem Laptop, ohne dass du dich dabei aussperrst.**
 
 [![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-v0.2.0%20ungetestet-orange.svg)](#-status)
@@ -61,7 +61,7 @@ Wer sich in dein Coolify-Dashboard einloggt, hat **Root auf deinem Server** — 
 
 Die Anleitungen dafür gibt es längst. Das eigentliche Problem ist die **Reihenfolge**: Firewall zu, bevor der SSH-Key läuft — und du stehst vor deinem eigenen Server. Die häufigste Coolify-Katastrophe ist nicht der Hacker, sondern der Admin, der sich selbst ausgesperrt hat.
 
-coolify-shield ist ein Bash-Wizard, der genau das verhindert. Er ist für Leute gebaut, die **keine** Linux-Admins sind: Er fragt im Klartext, die sicherste Antwort ist der Default, Enter drücken reicht. Und bevor er irgendetwas Riskantes tut, macht er einen Timer scharf, der die Änderung von selbst zurücknimmt, falls du nicht bestätigst, dass du noch reinkommst.
+coolify-shield ist ein Wizard, der genau das verhindert, und der den ganzen Weg geht: SSH-Schlüssel anlegen, Hetzner-Server nach Anleitung bestellen, Updates, **Coolify installieren**, Account anlegen, eigener Benutzer statt root, WireGuard-Tunnel, SSH nur noch per Schlüssel, Firewall, Registrierung aus und 2FA an. Er ist für Leute gebaut, die **keine** Linux-Admins sind: Er fragt im Klartext, die sicherste Antwort ist der Default, Enter drücken reicht. Und bevor er irgendetwas Riskantes tut, macht er einen Timer scharf, der die Änderung von selbst zurücknimmt, falls du nicht bestätigst, dass du noch reinkommst.
 
 ```mermaid
 flowchart TB
@@ -100,17 +100,17 @@ flowchart TB
 
 ## ✨ Features
 
+- **Der ganze Weg, nicht nur die Härtung.** `start.sh` / `start.ps1` auf dem Laptop und `install.sh --setup` auf dem Server nehmen einen leeren Hetzner-Server und liefern ein fertiges, abgesichertes Coolify: Updates und Grundpakete, offizieller Coolify-Installer, dein Admin-Account (sofort, bevor ihn jemand anders anlegt), eigener Benutzer mit sudo statt root, WireGuard-Tunnel für Laptop und Handy (QR-Code im Terminal), fail2ban und automatische Sicherheitsupdates, SSH nur noch per Schlüssel, Firewall mit Docker-Regeln, Registrierung aus und 2FA an (in der Coolify-Datenbank nachgeprüft).
 - **Ein Befehl auf dem Laptop, keine Config-Datei.** `start.sh` (Mac/Linux) oder `start.ps1` (Windows) legt den Schlüssel an, führt durch die Hetzner-Bestellung, lädt den Server-Teil hoch und startet ihn. Das Script fragt, statt zu erwarten. Kein Ansible, keine Control-Machine, kein Inventory.
 - **Geführter Ablauf (`--setup`).** Nach jeder Phase steht da „✓ Erledigt / ▶ Als Nächstes / ⏸ Du musst jetzt". Bricht der Lauf ab, startest du einfach neu; erledigte Phasen werden übersprungen.
 - **Trockenlauf als Standard** für Server, auf denen Coolify schon läuft. `sudo ./install.sh` zeigt nur an. Erst `--apply` ändert etwas.
 - **Watchdog vor jedem riskanten Schritt.** SSH-Härtung und Firewall laufen immer mit Rückfall-Timer (systemd-run, Fallback `at`). Im geführten Weg testet das Laptop-Script von außen und bestätigt selbst.
-- **Preflight-Gate.** Root, Distro-Tier, systemd, Watchdog-Fähigkeit, Docker, laufender Coolify-Container, SSH-Sitzung (nicht Web-Terminal), hinterlegte SSH-Keys, Internet, freier Speicher — alles geprüft, bevor eine Zeile geändert wird.
+- **Preflight-Gate.** Root, Distro-Tier, systemd, Watchdog-Fähigkeit, SSH-Sitzung (nicht Web-Terminal), hinterlegte SSH-Keys, Internet, freier Speicher, alles geprüft, bevor eine Zeile geändert wird. Docker und Coolify werden nur vorausgesetzt, wenn du den Server-Teil direkt startest; im geführten Weg installiert er sie selbst.
 - **Bestandsaufnahme (`--audit`).** 9 Prüfpunkte, nur lesen: SSH-Passwortlogin, Root-Login, Firewall, Coolify-Ports öffentlich?, Brute-Force-Schutz, Auto-Updates, VPN — plus die drei Punkte, die nur du selbst prüfen kannst.
 - **Backups + `--undo`.** Jede angefasste Datei landet mit Zeitstempel unter `/var/backups/coolify-shield/`.
 - **Idempotent.** Zustand unter `/var/lib/coolify-shield/`, erledigte Phasen werden übersprungen.
 - **Distro-Abstraktion.** Debian-Familie, RHEL-Familie, SUSE, Arch — Paketmanager und Firewall-Werkzeug werden erkannt, nie direkt `apt-get` in den Phasen.
 - **HTML-Report mit Ampel und Score.** Grün/Gelb/Rot, plus Restliste der Dinge, die kein Script für dich klicken kann.
-- **Kurs-Verweise.** Nach jeder Phase ein Hinweis, wo es im Kurs weitergeht (`--no-cues` blendet sie aus).
 - **Ein klarer Satz statt Stacktrace.** Jeder Abbruch sagt, *was* fehlt und *was zu tun ist*.
 
 ## 🚀 Quickstart
