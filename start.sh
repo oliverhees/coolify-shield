@@ -87,7 +87,20 @@ clipboard() {
 }
 
 # ssh_ok: kommt man rein? (ohne Rueckfragen, Hostkey beim ersten Mal annehmen)
-ssh_ok() { ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new "$NAME" true 2>/dev/null; }
+# Der letzte Fehler landet in SSH_LAST_ERR, damit wir ihn zeigen koennen.
+SSH_LAST_ERR=""
+ssh_ok() {
+  SSH_LAST_ERR="$(ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new "$NAME" true 2>&1 >/dev/null)"
+}
+
+# Hetzner vergibt IP-Adressen wieder. Ein alter Fingerabdruck in known_hosts
+# fuer diese IP gehoert dann zu einem fremden, laengst geloeschten Server.
+# Bei einem gerade frisch bestellten Server darf der Eintrag weg.
+forget_hostkey() {
+  local ip="$1"
+  ssh-keygen -F "$ip" >/dev/null 2>&1 || return 0
+  ssh-keygen -R "$ip" >/dev/null 2>&1 && skip "Alter Fingerabdruck fuer $ip aus known_hosts entfernt (IP wurde frueher schon mal vergeben)"
+}
 
 # wait_ssh <sekunden>: wartet, bis der Server per SSH antwortet
 wait_ssh() {
@@ -229,6 +242,7 @@ ANLEITUNG
   done
   state_set ip "$IP"
   write_ssh_config "$(state_get user)" "$IP"
+  forget_hostkey "$IP"
 fi
 next_up "Server bestellt, Adresse $(state_get ip) eingetragen" \
         "Ich teste, ob dein Schluessel am Server passt."
@@ -241,13 +255,24 @@ versuche=0
 until wait_ssh 180; do
   versuche=$(( versuche + 1 )); [ "$versuche" -ge 10 ] && die "Nach zehn Anlaeufen kein Login." "Server bei Hetzner pruefen (laeuft er? Key angehakt?), dann start.sh erneut."
   err "Ich komme nicht auf den Server."
+  case "$SSH_LAST_ERR" in
+    *"REMOTE HOST IDENTIFICATION HAS CHANGED"*)
+      say "  SSH kennt diese IP mit einem anderen Fingerabdruck (die IP hatte frueher einen anderen Server)."
+      forget_hostkey "$(state_get ip)"; continue ;;
+    *"Permission denied"*)   say "  SSH sagt: Schluessel wird nicht akzeptiert. Wurde der Key beim Bestellen angehakt?" ;;
+    *"Connection refused"*)  say "  SSH sagt: Verbindung abgelehnt. Der Server bootet wahrscheinlich noch." ;;
+    *"timed out"*|*"No route"*) say "  SSH sagt: keine Antwort. IP pruefen, oder der Server ist noch nicht fertig." ;;
+    "") ;;
+    *) say "  SSH sagt: $(printf '%s' "$SSH_LAST_ERR" | tail -n1)" ;;
+  esac
   say "  Haeufigste Gruende:"
   say "   · Beim Bestellen wurde der SSH-Key nicht angehakt → Server loeschen, neu bestellen (kostet nichts extra)"
   say "   · IP vertippt → gleich nochmal eingeben"
   say "   · Server ist noch nicht fertig → einfach nochmal warten"
   printf '\n'
-  if ask_yn "IP neu eingeben?" "n"; then
-    IP="$(ask_value 'IP-Adresse' "$(state_get ip)")"; state_set ip "$IP"; write_ssh_config "$(state_get user)" "$IP"
+  antwort="$(ask_value 'Nochmal warten = Enter, oder die richtige IP eintippen' "$(state_get ip)")"
+  if [[ "$antwort" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] && [ "$antwort" != "$(state_get ip)" ]; then
+    state_set ip "$antwort"; write_ssh_config "$(state_get user)" "$antwort"; forget_hostkey "$antwort"
   fi
 done
 ok "Login klappt: ssh $NAME"
