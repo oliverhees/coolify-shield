@@ -425,8 +425,32 @@ function Setup-Tunnel {
         Show-Ok ('Dashboard durch den Tunnel erreichbar: ' + $dashboard)
     } else {
         Show-Warn 'Dashboard antwortet nicht durch den Tunnel.'
-        Show-Say  '  Ist der Tunnel wirklich an? (WireGuard-App, Schalter an)'
-        Show-Say  '  Dann Enter, ich teste nochmal.'
+        # Hat der Server den Laptop ueberhaupt je gesehen? Wenn nein, kommt UDP 51820 nicht an.
+        # "wg show wg0 latest-handshakes" liefert je Zeile: <Schluessel> <Zeitstempel>.
+        # Zeitstempel 0 heisst: noch nie ein Paket. Summe > 0 heisst: mindestens einmal.
+        $hs = Invoke-Quiet 'ssh.exe' @(
+            '-o', 'BatchMode=yes',
+            '-o', 'ConnectTimeout=8',
+            $Name, 'sudo wg show wg0 latest-handshakes'
+        )
+        $handshakeSumme = 0
+        if ($hs.Code -eq 0) {
+            foreach ($zeile in @($hs.Out)) {
+                $felder = @(([string]$zeile).Trim() -split '\s+')
+                if ($felder.Count -ge 2 -and $felder[1] -match '^\d+$') {
+                    $handshakeSumme = $handshakeSumme + [long]$felder[1]
+                }
+            }
+        }
+        if ($handshakeSumme -gt 0) {
+            Show-Say '  Der Server sieht deinen Laptop, aber das Dashboard antwortet nicht. Kurz warten, dann Enter.'
+        } else {
+            Show-Say '  Der Server hat von deinem Laptop noch NIE ein Tunnel-Paket bekommen (UDP 51820).'
+            Show-Say '  Haeufigste Ursache: eine Hetzner Cloud Firewall am Server. In der Hetzner Console:'
+            Show-Say '  Server -> Reiter Firewalls -> Firewall entfernen ODER Regel "Eingehend UDP 51820, Any" ergaenzen.'
+            Show-Say '  Zweite Moeglichkeit: Tunnel auf dem Laptop nicht an (WireGuard-App, Aktivieren).'
+        }
+        Show-Say '  Wenn erledigt: Enter, ich teste nochmal.'
         Wait-Enter
     }
 
@@ -563,6 +587,8 @@ if ((Get-State 'ip') -ne '' -and (Test-SshLogin)) {
         Image:     Ubuntu 24.04
         Typ:       Shared vCPU, mindestens 4 GB RAM
         SSH-Key:   deinen Schluessel "$Name" ANHAKEN (wichtig, sonst kommst du nicht rein)
+        Firewall:  KEINE auswaehlen. (Die Firewall baut das Script selbst. Eine Hetzner-
+                   Firewall wuerde den VPN-Tunnel blockieren, UDP 51820.)
         Name:      $Name
       "Kostenpflichtig bestellen". Nach etwa einer Minute steht die IP-Adresse da.
    4. Einmal die Rescue-Konsole oeffnen: Server anklicken -> oben rechts das
