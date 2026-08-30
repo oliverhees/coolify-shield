@@ -216,8 +216,16 @@ WGCONF="$STATE_HOME/$NAME-laptop.conf"
     ok "Dashboard durch den Tunnel erreichbar: http://$WGIP:8000"
   else
     warn "Dashboard antwortet nicht durch den Tunnel."
-    say  "  Ist der Tunnel wirklich an? (Linux: nmcli connection up $NAME-laptop / Mac: WireGuard-App, Schalter an)"
-    say  "  Dann Enter, ich teste nochmal."
+    # Hat der Server den Laptop ueberhaupt je gesehen? Wenn nein, kommt UDP 51820 nicht an.
+    if ssh -o BatchMode=yes -o ConnectTimeout=8 "$NAME" "sudo wg show wg0 latest-handshakes" 2>/dev/null | awk '{s+=$2} END {exit (s>0)?0:1}'; then
+      say  "  Der Server sieht deinen Laptop, aber das Dashboard antwortet nicht. Kurz warten, dann Enter."
+    else
+      say  "  Der Server hat von deinem Laptop noch NIE ein Tunnel-Paket bekommen (UDP 51820)."
+      say  "  Haeufigste Ursache: eine Hetzner Cloud Firewall am Server. In der Hetzner Console:"
+      say  "  Server → Reiter Firewalls → Firewall entfernen ODER Regel 'Eingehend UDP 51820, Any' ergaenzen."
+      say  "  Zweite Moeglichkeit: Tunnel auf dem Laptop nicht an (Linux: sudo wg-quick up $NAME / Mac: WireGuard-App, Schalter)."
+    fi
+    say  "  Wenn erledigt: Enter, ich teste nochmal."
     pause_enter
   fi
   if curl -s --max-time 6 -o /dev/null "http://$WGIP:8000"; then
@@ -296,6 +304,8 @@ else
         Image:     Ubuntu 24.04
         Typ:       Shared vCPU, mindestens 4 GB RAM
         SSH-Key:   deinen Schluessel "$NAME" ANHAKEN (wichtig, sonst kommst du nicht rein)
+        Firewall:  KEINE auswaehlen. (Die Firewall baut das Script selbst. Eine Hetzner-
+                   Firewall wuerde den VPN-Tunnel blockieren, UDP 51820.)
         Name:      $NAME
       "Kostenpflichtig bestellen". Nach etwa einer Minute steht die IP-Adresse da.
    4. Einmal die Rescue-Konsole oeffnen: Server anklicken → oben rechts das
