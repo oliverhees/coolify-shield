@@ -473,7 +473,7 @@ flowchart TD
 
 ### Laptop 2 · Server bestellen (Hetzner)
 
-**Was passiert:** Das Script zeigt dir deinen öffentlichen Schlüssel und eine Anleitung: Hetzner-Konto, Schlüssel hinterlegen, Server mit Ubuntu 24.04 und mindestens 4 GB RAM bestellen, dabei deinen Schlüssel **anhaken**, und einmal die Rescue-Konsole öffnen. Das Script bestellt nichts für dich und braucht keinen Zugang zu deinem Hetzner-Konto. Du klickst, es wartet. Wenn der Server steht, tippst du seine IP-Adresse ein.
+**Was passiert:** Das Script zeigt dir deinen öffentlichen Schlüssel und eine Anleitung: Hetzner-Konto, Schlüssel hinterlegen, Server mit Ubuntu 24.04 und mindestens 4 GB RAM bestellen, dabei deinen Schlüssel **anhaken**, eine Hetzner-Firewall mit genau fünf Regeln anlegen (ICMP, TCP 22, TCP 80, TCP 443, UDP 51820 für den Tunnel, kein Port 8000), und einmal die Rescue-Konsole öffnen. Das Script bestellt nichts für dich und braucht keinen Zugang zu deinem Hetzner-Konto. Du klickst, es wartet. Wenn der Server steht, tippst du seine IP-Adresse ein.
 
 **Warum von Hand:** Du sollst sehen, wo dein Server liegt und was er kostet, und du sollst wissen, wo der Notausgang ist. Das kann kein Script für dich wissen.
 
@@ -697,6 +697,7 @@ Was die Zeile macht: Sie lädt das Start-Script herunter und startet es. Der Res
 
 - **Abgebrochen, Netz weg, Laptop zugeklappt:** Dieselbe Zeile nochmal. Das Script macht da weiter, wo es war.
 - **„Ich komme nicht auf den Server":** Meistens wurde beim Bestellen der SSH-Key nicht angehakt. Server bei Hetzner löschen, neu bestellen, diesmal anhaken. Kostet nichts extra.
+- **„Der Server hat von deinem Laptop noch nie ein Tunnel-Paket bekommen":** In der Hetzner-Firewall fehlt die Regel UDP 51820. Server → Reiter Firewalls → Regel ergänzen (Eingehend, UDP, 51820, Any IPv4 + Any IPv6). Eine halbe Minute später verbindet sich der Tunnel von selbst.
 - **Der Server ist nach dem Neustart nicht erreichbar:** Bei Hetzner in der Serverliste schauen, ob er läuft. Dann das Script nochmal starten.
 - **„Ich bestätige NICHT":** Der Test von außen ist fehlgeschlagen. Das Script macht nichts kaputt, der Server nimmt die Änderung in 10 Minuten zurück. Danach das Script nochmal starten. Bleibt es dabei: Ausgabe in der Community posten.
 

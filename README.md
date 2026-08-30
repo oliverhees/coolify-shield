@@ -345,7 +345,7 @@ flowchart TD
 | Phase | Modul | Was passiert | Rückfall-Timer | Was du tun musst |
 | --- | --- | --- | --- | --- |
 | **Laptop 1 · Schlüssel** | `start.sh` / `start.ps1` | ed25519-Schlüssel unter `~/.ssh/coolify-shield/<name>`, Block in `~/.ssh/config` (`IdentitiesOnly yes`), öffentlicher Teil in die Zwischenablage | nein | Servernamen wählen, optional Passphrase |
-| **Laptop 2 · Hetzner** | `start.sh` / `start.ps1` | zeigt die Bestell-Anleitung (Ubuntu 24.04, 4 GB, Schlüssel anhaken, Rescue-Konsole öffnen) | nein | bestellen, IP eintragen |
+| **Laptop 2 · Hetzner** | `start.sh` / `start.ps1` | zeigt die Bestell-Anleitung (Ubuntu 24.04, 4 GB, Schlüssel anhaken, Hetzner-Firewall mit ICMP, TCP 22/80/443 und UDP 51820, kein 8000, Rescue-Konsole öffnen) | nein | bestellen, IP eintragen |
 | **Laptop 3 · Login** | `start.sh` / `start.ps1` | wartet bis SSH antwortet, lädt das Repo als Tarball nach `/opt/coolify-shield`, startet `install.sh --setup` | nein | nichts |
 | **0 · Preflight** | `00-preflight.sh` | prüft Root, Distro, Watchdog-Fähigkeit, Sitzungsart, Internet, Platz. Ändert nichts | nein | bestätigen, dass die Rescue-Konsole offen ist |
 | **1 · Updates** | `05-updates.sh` | `apt upgrade`, Grundpakete (ufw, fail2ban, wireguard-tools, qrencode), Zeitzone Europe/Berlin, 2 GB Swap. Braucht der Kernel einen Neustart, endet das Script mit Code 75, der Laptop startet den Server neu und macht weiter | nein | nichts, bei Neustart etwa eine Minute warten |
@@ -361,7 +361,7 @@ flowchart TD
 | **Report** | `99-report.sh` | HTML mit Ampel, Score und Restliste | nein | nichts |
 | **Laptop 5 · Tunnel** | `start.sh` / `start.ps1` | holt `laptop.conf`, importiert sie (Mac: WireGuard-App, Linux: NetworkManager oder `wg-quick`), testet `http://10.8.0.1:8000` | nein | Mac: Tunnel in der App importieren und aktivieren |
 
-**Warum SSH offen bleibt:** Wäre Port 22 nur aus dem Tunnel erreichbar, dann würde ein kaputter Tunnel dich vom Server aussperren, und genau das soll das Script verhindern. Ein SSH-Dienst, der nur Schlüssel akzeptiert und nach drei Versuchen dichtmacht, ist für Bots kein Ziel. Wer es strenger will, kann bei Hetzner zusätzlich eine Cloud-Firewall vor Port 22 setzen.
+**Warum SSH offen bleibt:** Wäre Port 22 nur aus dem Tunnel erreichbar, dann würde ein kaputter Tunnel dich vom Server aussperren, und genau das soll das Script verhindern. Ein SSH-Dienst, der nur Schlüssel akzeptiert und nach drei Versuchen dichtmacht, ist für Bots kein Ziel. Die Hetzner-Firewall aus der Bestell-Anleitung ist der äußere Gürtel: ICMP, TCP 22/80/443, UDP 51820 (Tunnel). Port 8000 steht dort bewusst nicht drin. Fehlt die UDP-Regel, kommt der Tunnel nie zustande, das Script erkennt das und sagt es dir.
 
 **Warum Docker eine eigene Regel braucht:** Docker schreibt seine Port-Freigaben direkt in iptables und umgeht damit ufw. Ein `ufw deny 8000` allein ändert nichts. Deshalb landet der Block in der Chain `DOCKER-USER`, die Docker absichtlich für genau solche Regeln frei lässt, und matcht über `ctorigdstport`, weil Docker die Zieladresse vorher umschreibt.
 

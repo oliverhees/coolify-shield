@@ -221,8 +221,8 @@ WGCONF="$STATE_HOME/$NAME-laptop.conf"
       say  "  Der Server sieht deinen Laptop, aber das Dashboard antwortet nicht. Kurz warten, dann Enter."
     else
       say  "  Der Server hat von deinem Laptop noch NIE ein Tunnel-Paket bekommen (UDP 51820)."
-      say  "  Haeufigste Ursache: eine Hetzner Cloud Firewall am Server. In der Hetzner Console:"
-      say  "  Server → Reiter Firewalls → Firewall entfernen ODER Regel 'Eingehend UDP 51820, Any' ergaenzen."
+      say  "  Haeufigste Ursache: In der Hetzner-Firewall fehlt die Regel fuer den Tunnel. In der Hetzner Console:"
+      say  "  Server → Reiter Firewalls → Regel ergaenzen: Eingehend, UDP, Port 51820, Quelle Any IPv4 + Any IPv6."
       say  "  Zweite Moeglichkeit: Tunnel auf dem Laptop nicht an (Linux: sudo wg-quick up $NAME / Mac: WireGuard-App, Schalter)."
     fi
     say  "  Wenn erledigt: Enter, ich teste nochmal."
@@ -304,13 +304,22 @@ else
         Image:     Ubuntu 24.04
         Typ:       Shared vCPU, mindestens 4 GB RAM
         SSH-Key:   deinen Schluessel "$NAME" ANHAKEN (wichtig, sonst kommst du nicht rein)
-        Firewall:  KEINE auswaehlen. (Die Firewall baut das Script selbst. Eine Hetzner-
-                   Firewall wuerde den VPN-Tunnel blockieren, UDP 51820.)
+        Firewall:  "Firewall erstellen" (oder eine bestehende waehlen) mit GENAU diesen
+                   eingehenden Regeln, alles mit Quelle "Any IPv4, Any IPv6":
+                     ICMP          (Ping)
+                     TCP 22        (SSH)
+                     TCP 80        (Web)
+                     TCP 443       (Web, verschluesselt)
+                     UDP 51820     (dein VPN-Tunnel, WICHTIG, sonst kommst du nie ans Dashboard)
+                   KEIN Port 8000: das Dashboard soll nur durch den Tunnel erreichbar sein.
         Name:      $NAME
       "Kostenpflichtig bestellen". Nach etwa einer Minute steht die IP-Adresse da.
    4. Einmal die Rescue-Konsole oeffnen: Server anklicken → oben rechts das
       Bildschirm-Symbol ("Console"). Das ist dein Notausgang, falls spaeter mal
       etwas klemmt. Tab offen lassen.
+
+  Die Hetzner-Firewall ist der aeussere Guertel. Den inneren (auf dem Server) baut
+  das Script selbst. Beide zusammen: doppelt haelt besser.
 
 ANLEITUNG
   pause_enter
