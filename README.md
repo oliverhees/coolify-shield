@@ -182,7 +182,6 @@ Dieser Weg legt keinen Coolify-Account und keinen Admin-Benutzer an, das hast du
 | `--phase <basics\|ssh\|firewall\|vpn>` | nur eine Phase |
 | `--yes` | keine Rückfragen (nur für Wiederholungsläufe) |
 | `--force` | auf ungetesteten Systemen trotzdem starten |
-| `--no-cues` | Kurs-Verweise ausblenden |
 
 ## 🛡️ Das Sicherheitsnetz
 
