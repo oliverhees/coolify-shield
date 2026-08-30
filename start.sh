@@ -154,10 +154,12 @@ say "  Ein SSH-Schluessel ist wie ein Haustuerschluessel fuer den Server: zwei H
 say "  eine bleibt bei dir (privat), die andere kommt auf den Server (oeffentlich)."
 say "  Kein Passwort, nichts zu raten."
 printf '\n'
+versuche=0
 while :; do
   NAME="$(ask_value 'Wie soll dein Server heissen? (kurz, klein, ohne Leerzeichen)' 'coolify')"
   [[ "$NAME" =~ ^[a-z0-9][a-z0-9-]{0,30}$ ]] && break
   warn "Nur Kleinbuchstaben, Ziffern und Bindestrich."
+  versuche=$(( versuche + 1 )); [ "$versuche" -ge 10 ] && die "Zehnmal kein gueltiger Name." "Beispiel: coolify oder mein-server"
 done
 state_set name "$NAME"
 [ -n "$(state_get user)" ] || state_set user root
@@ -214,10 +216,12 @@ else
 
 ANLEITUNG
   pause_enter
+  versuche=0
   while :; do
     IP="$(ask_value 'IP-Adresse des Servers (steht in der Serverliste)' "$(state_get ip)")"
     [[ "$IP" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] && break
     warn "Das sieht nicht nach einer IPv4-Adresse aus (z. B. 65.21.12.34)."
+    versuche=$(( versuche + 1 )); [ "$versuche" -ge 10 ] && die "Zehnmal keine gueltige IP-Adresse." "Bei Hetzner in der Serverliste steht sie in der Spalte IPv4."
   done
   state_set ip "$IP"
   write_ssh_config "$(state_get user)" "$IP"
@@ -229,7 +233,9 @@ next_up "Server bestellt, Adresse $(state_get ip) eingetragen" \
 # Schritt 3 · Erster Login
 # ---------------------------------------------------------------------------
 step "Schritt 3 · Erster Login"
+versuche=0
 until wait_ssh 180; do
+  versuche=$(( versuche + 1 )); [ "$versuche" -ge 10 ] && die "Nach zehn Anlaeufen kein Login." "Server bei Hetzner pruefen (laeuft er? Key angehakt?), dann start.sh erneut."
   err "Ich komme nicht auf den Server."
   say "  Haeufigste Gruende:"
   say "   · Beim Bestellen wurde der SSH-Key nicht angehakt → Server loeschen, neu bestellen (kostet nichts extra)"
