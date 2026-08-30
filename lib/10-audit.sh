@@ -125,5 +125,4 @@ phase_audit() {
   local rote; rote="$(printf '%s\n' "${AUDIT_ROWS[@]}" | awk -F'|' '$3=="rot"' | wc -l)"
   printf '\n  %s offene Baustellen mit hoher Prioritaet.\n' "$rote"
   state_set "phase.audit" "$(date -Iseconds)"
-  course_cue "Modul 1 · ab 08:40"
 }

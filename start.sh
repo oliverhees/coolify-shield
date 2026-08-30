@@ -393,7 +393,7 @@ while :; do
   fi
 
   # Rueckfall-Timer aktiv? Dann von aussen testen und bestaetigen.
-  if [ -n "$S_WATCHDOG" ]; then
+  if [ -n "$S_WATCHDOG" ] && [ "$(state_get confirmed)" != "$S_WATCHDOG" ]; then
     step "Pruefung von aussen (Timer laeuft)"
     fehl=0
     case "$S_WATCHDOG" in
@@ -420,9 +420,11 @@ while :; do
         ;;
     esac
     if [ "$fehl" -eq 0 ]; then
-      ssh -o BatchMode=yes "$NAME" "sudo $SERVER_DIR/install.sh --confirm" >/dev/null 2>&1 \
-        && ok "Bestaetigt, Rueckfall-Timer entschaerft" \
-        || warn "Konnte nicht bestaetigen. Der Timer rollt in 10 Minuten zurueck; einfach start.sh erneut."
+      if ssh -o BatchMode=yes "$NAME" "sudo $SERVER_DIR/install.sh --confirm" >/dev/null 2>&1; then
+        ok "Bestaetigt, Rueckfall-Timer entschaerft"; state_set confirmed "$S_WATCHDOG"
+      else
+        warn "Konnte nicht bestaetigen. Der Timer rollt in 10 Minuten zurueck; einfach start.sh erneut."
+      fi
     else
       warn "Ich bestaetige NICHT. Der Server nimmt die Aenderung in 10 Minuten von selbst zurueck."
       say  "  Danach start.sh erneut starten, dann versuchen wir es nochmal."

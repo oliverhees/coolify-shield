@@ -39,7 +39,6 @@ usage() {
     --phase <name>   nur eine Phase (basics|ssh|firewall|vpn)
     --yes            keine Rueckfragen (nur fuer Wiederholungslaeufe)
     --force          Preflight-Warnungen uebergehen
-    --no-cues        Kurs-Verweise ausblenden
 
   Wenn du dich ausgesperrt hast: NOTFALL.md
 
@@ -54,20 +53,19 @@ while [ $# -gt 0 ]; do
     --setup)    MODUS="setup"; DRY_RUN=0 ;;
     --apply)    MODUS="apply"; DRY_RUN=0 ;;
     --audit)    MODUS="audit" ;;
-    --confirm)  MODUS="confirm" ;;
-    --undo)     MODUS="undo" ;;
-    --status)   MODUS="status" ;;
+    --confirm)  MODUS="confirm"; DRY_RUN=0 ;;
+    --undo)     MODUS="undo"; DRY_RUN=0 ;;
+    --status)   MODUS="status"; DRY_RUN=0 ;;
     --phase)    NUR_PHASE="${2:-}"; shift ;;
     --yes|-y)   ASSUME_YES=1 ;;
     --force)    FORCE=1 ;;
-    --no-cues)  SHIELD_COURSE_CUES=0 ;;
     --dry-setup) MODUS="setup"; DRY_RUN=1 ;;   # nur fuer Tests
     -h|--help)  usage; exit 0 ;;
     *)          echo "Unbekannte Option: $1"; usage; exit 1 ;;
   esac
   shift
 done
-export DRY_RUN FORCE ASSUME_YES SHIELD_COURSE_CUES MODUS
+export DRY_RUN FORCE ASSUME_YES MODUS
 
 mkdir -p "$STATE_DIR" "$BACKUP_DIR" 2>/dev/null || true
 touch "$LOG_FILE" 2>/dev/null || true
@@ -109,10 +107,11 @@ case "$MODUS" in
       say "Kein aktiver Rueckfall-Timer. Nichts zu bestaetigen."
     else
       for w in $laufende; do watchdog_disarm "$w"; done
-      laptop_env_set "watchdog" ""
       printf '\n'
       ok "Alle Aenderungen bestaetigt."
     fi
+    # Immer aufraeumen, sonst prueft das Laptop-Script in einer Schleife weiter.
+    laptop_env_set "watchdog" ""
     ;;
 
   undo)

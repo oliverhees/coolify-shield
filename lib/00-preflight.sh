@@ -125,5 +125,4 @@ phase_preflight() {
   fi
 
   state_set "phase.preflight" "$(date -Iseconds)"
-  course_cue "Modul 1 · ab 02:30"
 }

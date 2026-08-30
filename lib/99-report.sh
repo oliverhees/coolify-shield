@@ -48,5 +48,4 @@ phase_report() {
     done
   fi
 
-  course_cue "Modul 5 · Abschluss"
 }

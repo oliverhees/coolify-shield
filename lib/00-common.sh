@@ -54,12 +54,6 @@ die() {
   exit 1
 }
 
-# Verweis in den Kurs. Der Grund, warum Script und Video im Gleichschritt laufen.
-course_cue() {
-  [ "${SHIELD_COURSE_CUES:-1}" = "1" ] || return 0
-  printf '\n  %s▶ Weiter im Kurs: %s%s\n' "$C_BLUE" "$*" "$C_RESET"
-}
-
 # ---------------------------------------------------------------------------
 # Fragen (Default = sicherste Antwort, Enter reicht)
 # ---------------------------------------------------------------------------

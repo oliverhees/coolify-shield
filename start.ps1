@@ -820,103 +820,13 @@ if ((Get-State 'tunnel') -ne 'ok') {
     if (-not (Setup-Tunnel)) { Show-Warn 'Tunnel-Test nicht bestanden, siehe oben.' }
 }
 
-Show-NextUp 'Server ist eingerichtet und abgesichert' `
-            'WireGuard auf deinem Laptop, damit du ans Dashboard kommst.'
-
-# ---------------------------------------------------------------------------
-# Schritt 5 · WireGuard auf dem Laptop
-# ---------------------------------------------------------------------------
-Show-Step 'Schritt 5 · Dein Tunnel'
-
-$WgConfPfad = Join-Path $StateHome ($Name + '-laptop.conf')
-$WgConfOk = $false
-if ($S_WgConf -ne '') {
-    $wg = Invoke-Quiet 'ssh.exe' @('-o', 'BatchMode=yes', $Name, ('sudo cat ' + $S_WgConf))
-    $inhalt = (@($wg.Out) -join "`n")
-    if ($wg.Code -eq 0 -and $inhalt -match '\[Interface\]') {
-        Write-TextFileNoBom -Path $WgConfPfad -Text ($inhalt.TrimEnd() + "`n")
-        $WgConfOk = $true
-        Show-Ok ('Tunnel-Datei geholt: ' + $WgConfPfad)
-    } else {
-        Show-Warn 'Tunnel-Datei konnte nicht geholt werden'
-    }
-} else {
-    Show-Warn 'Der Server hat keine Tunnel-Datei gemeldet'
+# Fuer den Abschlusstext: falls Setup-Tunnel in diesem Lauf gar nicht lief
+# (Tunnel stand schon aus einem frueheren Lauf), fehlt die Adresse noch.
+if ($null -eq $WgIp -or $WgIp -eq '') {
+    $WgIp = $S_WgIp
+    if ($WgIp -eq '') { $WgIp = '10.8.0.1' }
 }
-
-$WgIp = $S_WgIp
-if ($WgIp -eq '') { $WgIp = '10.8.0.1' }
-
-# WireGuard installieren, falls noetig
-if (Test-Path -LiteralPath $WgExe) {
-    Show-Ok 'WireGuard ist installiert'
-} else {
-    if (Get-Command 'winget' -ErrorAction SilentlyContinue) {
-        Show-Say '  Ich installiere WireGuard ueber winget. Das dauert einen Moment.'
-        & winget install --id WireGuard.WireGuard -e --accept-package-agreements --accept-source-agreements
-        if (-not (Test-Path -LiteralPath $WgExe)) {
-            Show-Warn 'winget hat WireGuard nicht an der erwarteten Stelle installiert.'
-        } else {
-            Show-Ok 'WireGuard installiert'
-        }
-    } else {
-        Show-Warn 'winget gibt es auf diesem Rechner nicht.'
-    }
-    if (-not (Test-Path -LiteralPath $WgExe)) {
-        Show-Say '  Bitte WireGuard von Hand installieren: https://www.wireguard.com/install/'
-        Show-Say '  Danach hier weiter.'
-        Wait-Enter
-    }
-}
-
-# Tunnel importieren. Das braucht Administrator-Rechte.
-$TunnelAn = $false
-if ($WgConfOk -and (Test-Path -LiteralPath $WgExe)) {
-    $identitaet = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $prinzipal  = New-Object Security.Principal.WindowsPrincipal($identitaet)
-    $istAdmin   = $prinzipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-    if ($istAdmin) {
-        & $WgExe '/installtunnelservice' $WgConfPfad
-        if ($LASTEXITCODE -eq 0) { $TunnelAn = $true }
-    } else {
-        Show-Say '  Fuer den Tunnel braucht Windows einmal Administrator-Rechte.'
-        Show-Say '  Es kommt gleich ein Fenster mit der Frage "Zulassen?". Bitte auf Ja klicken.'
-        # -Verb RunAs braucht -ArgumentList. Der Pfad kann Leerzeichen enthalten,
-        # deshalb wird er hier selbst in Anfuehrungszeichen gesetzt.
-        $argumente = @('/installtunnelservice', ('"' + $WgConfPfad + '"'))
-        $proc = Start-Process -FilePath $WgExe -ArgumentList $argumente -Verb RunAs -Wait -PassThru
-        if ($null -ne $proc -and $proc.ExitCode -eq 0) { $TunnelAn = $true }
-    }
-
-    if ($TunnelAn) {
-        Show-Ok ('Tunnel eingerichtet und eingeschaltet (' + $Name + '-laptop)')
-    } else {
-        Show-Warn 'Der Tunnel liess sich nicht automatisch einschalten.'
-        Show-Say  '  So geht es von Hand: WireGuard oeffnen, dann "Tunnel importieren",'
-        Show-Say  ('  dann diese Datei waehlen: ' + $WgConfPfad)
-        Show-Say  '  Danach auf "Aktivieren" klicken.'
-        Wait-Enter
-    }
-} elseif (-not $WgConfOk) {
-    Show-Warn 'Ohne Tunnel-Datei kann ich den Tunnel nicht einrichten.'
-    Show-Say  '  Starte start.ps1 spaeter noch einmal, dann hole ich sie erneut vom Server.'
-} else {
-    # Datei ist da, WireGuard fehlt. Der Weg von Hand bleibt offen.
-    Show-Warn 'WireGuard ist nicht installiert, deshalb kann ich den Tunnel nicht einschalten.'
-    Show-Say  '  So geht es, sobald WireGuard da ist: WireGuard oeffnen, dann "Tunnel importieren",'
-    Show-Say  ('  dann diese Datei waehlen: ' + $WgConfPfad)
-    Show-Say  '  Danach auf "Aktivieren" klicken.'
-}
-
 $Dashboard = 'http://' + $WgIp + ':8000'
-$test = Invoke-Quiet 'curl.exe' @('-s', '--max-time', '6', '-o', 'NUL', $Dashboard)
-if ($test.Code -eq 0) {
-    Show-Ok ('Dashboard durch den Tunnel erreichbar: ' + $Dashboard)
-} else {
-    Show-Warn 'Dashboard antwortet nicht durch den Tunnel. Ist der Tunnel wirklich an?'
-    Show-Say  ('  Dann nochmal: curl.exe ' + $Dashboard)
-}
 
 # ---------------------------------------------------------------------------
 # Fertig
