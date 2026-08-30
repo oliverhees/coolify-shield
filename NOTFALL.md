@@ -57,9 +57,11 @@ seriöse Anbieter hat sowas.
 ## Drin? Dann repariere es so
 
 ```bash
-cd /pfad/zu/coolify-shield
-sudo ./install.sh --undo
+sudo /opt/coolify-shield/install.sh --undo
 ```
+
+(Beim Anfänger-Weg liegt das Script unter `/opt/coolify-shield`. Hast du es selbst
+geklont, dann in dein Verzeichnis wechseln.)
 
 Wenn das Verzeichnis weg ist, hier die Einzelschritte:
 
@@ -68,28 +70,35 @@ Wenn das Verzeichnis weg ist, hier die Einzelschritte:
 ufw disable                    # Debian/Ubuntu
 systemctl stop firewalld       # Fedora/Rocky/Alma
 ```
+Die Docker-Regeln für das Dashboard stehen in `/etc/ufw/after.rules` zwischen
+`# BEGIN coolify-shield` und `# END coolify-shield`. Nach `ufw disable` sind sie
+inaktiv; endgültig weg: den Block löschen.
 
 ### SSH-Konfiguration zurückholen
 ```bash
-ls -t /var/backups/coolify-shield/ | grep sshd_config | head -1
-cp /var/backups/coolify-shield/<datei-von-oben> /etc/ssh/sshd_config
-sshd -t && systemctl reload sshd
+rm -f /etc/ssh/sshd_config.d/00-coolify-shield.conf
+sshd -t && systemctl reload ssh
 ```
+`sshd -t` prüft auf Syntaxfehler. Gibt es einen Fehler aus, lade nicht neu,
+sonst startet SSH gar nicht mehr.
 
-`sshd -t` prüft die Datei auf Syntaxfehler. Gibt sie einen Fehler aus, lade
-nicht neu – sonst startet SSH gar nicht mehr.
-
-### Traefik-Sperre entfernen
+### fail2ban hat DICH gesperrt (zu oft falsch eingeloggt)
 ```bash
-rm -f /data/coolify/proxy/dynamic/shield-*.yaml
-docker restart coolify-proxy
+fail2ban-client status sshd            # zeigt gesperrte Adressen
+fail2ban-client set sshd unbanip <deine-ip>
 ```
+Die Sperre läuft nach einer Stunde von selbst ab.
 
-### Coolify direkt erreichen, an Traefik vorbei
+### VPN-Tunnel kaputt, Dashboard nicht erreichbar
+Der Tunnel ist der einzige Weg zum Dashboard. Solange er nicht geht, hilft ein
+SSH-Tunnel als Ersatz:
 ```bash
-ssh -L 8000:localhost:8000 root@<server-ip>
+ssh -L 8000:localhost:8000 <dein-servername>
 ```
-Dann im Browser `http://localhost:8000`.
+Dann im Browser `http://localhost:8000`. Den Handy-QR-Code neu anzeigen:
+```bash
+sudo qrencode -t ansiutf8 < /var/lib/coolify-shield/wireguard/handy.conf
+```
 
 ---
 
