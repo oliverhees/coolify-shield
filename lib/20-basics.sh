@@ -16,7 +16,7 @@ APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 APT::Periodic::AutocleanInterval "7";
 CONF
-      run systemctl enable --now unattended-upgrades
+      run_soft systemctl enable --now unattended-upgrades
       ok "Sicherheitsupdates laufen ab jetzt automatisch"
       ;;
     dnf)

@@ -35,11 +35,11 @@ phase_updates() {
   ok "Pakete aktuell"
 
   # Zeit: falsche Uhrzeit bricht spaeter Zertifikate und Logins.
-  run timedatectl set-timezone Europe/Berlin
+  run_soft timedatectl set-timezone Europe/Berlin
   if have chronyd || have chrony; then
-    run systemctl enable --now chrony
+    run_soft systemctl enable --now chrony
   else
-    run systemctl enable --now systemd-timesyncd
+    run_soft systemctl enable --now systemd-timesyncd
   fi
   ok "Zeitzone Europe/Berlin, Uhr wird automatisch gestellt"
 
@@ -47,7 +47,7 @@ phase_updates() {
   if swapon --show 2>/dev/null | grep -q . ; then
     skip "Swap – bereits vorhanden"
   else
-    run fallocate -l 2G /swapfile
+    run_soft fallocate -l 2G /swapfile || run dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
     run chmod 600 /swapfile
     run mkswap /swapfile
     run swapon /swapfile

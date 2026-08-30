@@ -89,7 +89,20 @@ run() {
     return 0
   fi
   log "RUN  $*"
-  "$@"
+  if ! "$@"; then
+    local rc=$?
+    log "FAIL rc=$rc :: $*"
+    die "Ein Befehl ist fehlgeschlagen: $1 (Code $rc)." "Ausgabe oben lesen, Problem beheben, dann einfach erneut starten. Ich mache da weiter, wo wir waren."
+  fi
+}
+
+# Wie run, aber ein Fehler ist erlaubt (nur Warnung).
+run_soft() {
+  if [ "$DRY_RUN" = "1" ]; then
+    printf '  %s[trocken]%s %s\n' "$C_DIM" "$C_RESET" "$*"; log "DRY  $*"; return 0
+  fi
+  log "RUN  $*"
+  "$@" || { warn "Nicht kritisch, aber fehlgeschlagen: $1"; log "SOFTFAIL $*"; return 1; }
 }
 
 # Jede Datei wird vor Aenderung gesichert. Basis fuer --undo.
@@ -105,7 +118,7 @@ backup_file() {
 # ---------------------------------------------------------------------------
 # Zustand (was ist schon erledigt -> Idempotenz)
 # ---------------------------------------------------------------------------
-state_set() { mkdir -p "$STATE_DIR"; printf '%s\n' "${2:-1}" > "$STATE_DIR/$1"; }
+state_set() { [ "$DRY_RUN" = "1" ] && [ "${1#phase.}" != "$1" ] && return 0; mkdir -p "$STATE_DIR"; printf '%s\n' "${2:-1}" > "$STATE_DIR/$1"; }
 state_get() { cat "$STATE_DIR/$1" 2>/dev/null || printf ''; }
 state_has() { [ -f "$STATE_DIR/$1" ]; }
 state_clear() { rm -f "$STATE_DIR/$1"; }
@@ -366,6 +379,7 @@ pause_enter() {
 
 # Zustand fuer das Laptop-Script: einfache key=value-Zeilen.
 laptop_env_set() {
+  [ "$DRY_RUN" = "1" ] && return 0
   mkdir -p "$STATE_DIR"
   touch "$LAPTOP_ENV"
   grep -v "^$1=" "$LAPTOP_ENV" > "$LAPTOP_ENV.tmp" 2>/dev/null || true

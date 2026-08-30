@@ -57,7 +57,7 @@ phase_firewall() {
   ask_yn "Firewall jetzt scharf schalten?" "j" || { skip "Phase uebersprungen"; return 0; }
 
   watchdog_arm "firewall" 10 \
-    "ufw --force disable; sed -i '/^$FW_MARK_BEGIN\$/,/^$FW_MARK_END\$/d' $UFW_AFTER; ufw --force reset >/dev/null 2>&1 || true"
+    "ufw --force disable; sed -i '/^$FW_MARK_BEGIN\$/,/^$FW_MARK_END\$/d' '$UFW_AFTER'; ufw --force reset >/dev/null 2>&1 || true"
 
   if [ "$DRY_RUN" = "1" ]; then
     printf '  %s[trocken]%s ufw-Regeln setzen, DOCKER-USER-Block in %s schreiben, ufw enable\n' "$C_DIM" "$C_RESET" "$UFW_AFTER"
@@ -71,7 +71,8 @@ phase_firewall() {
     ufw allow 80/tcp comment 'Web' >/dev/null
     ufw allow 443/tcp comment 'Web TLS' >/dev/null
     ufw allow "$WG_PORT/udp" comment 'WireGuard' >/dev/null
-    ufw allow in on wg0 comment 'alles aus dem Tunnel' >/dev/null
+    ufw allow in on wg0 comment 'alles aus dem Tunnel' >/dev/null \
+      || { watchdog_disarm "firewall"; die "ufw hat die Tunnel-Regel (wg0) nicht angenommen." "Firewall bleibt aus. Ausgabe in der Community posten."; }
     ufw allow from 172.16.0.0/12 to any port 22 proto tcp comment 'Coolify verwaltet sich selbst' >/dev/null
     # ufw reset hat after.rules auf den Default zurueckgesetzt; Block sauber anhaengen.
     fw_block_remove

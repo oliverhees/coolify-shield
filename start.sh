@@ -123,8 +123,12 @@ write_ssh_config() {
 
 # laptop.env vom Server lesen -> lokale Variablen
 read_server_env() {
-  local raw
-  raw="$(ssh -o BatchMode=yes -o ConnectTimeout=8 "$NAME" 'sudo cat /var/lib/coolify-shield/laptop.env 2>/dev/null || cat /var/lib/coolify-shield/laptop.env 2>/dev/null' 2>/dev/null || true)"
+  local raw=""
+  for _ in 1 2 3; do
+    raw="$(ssh -o BatchMode=yes -o ConnectTimeout=8 "$NAME" 'sudo cat /var/lib/coolify-shield/laptop.env 2>/dev/null || cat /var/lib/coolify-shield/laptop.env 2>/dev/null' 2>/dev/null || true)"
+    [ -n "$raw" ] && break
+    sleep 5
+  done
   S_PHASE="$(printf '%s\n' "$raw" | sed -n 's/^phase=//p' | tail -n1)"
   S_ADMIN="$(printf '%s\n' "$raw" | sed -n 's/^admin_user=//p' | tail -n1)"
   S_WGCONF="$(printf '%s\n' "$raw" | sed -n 's/^wg_client_conf=//p' | tail -n1)"
