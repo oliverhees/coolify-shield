@@ -716,8 +716,11 @@ Ja, beliebig oft. Was erledigt ist, wird übersprungen.
 **Was ist, wenn ich Windows habe?**
 Das Script läuft auf dem *Server* (Linux). Dein Laptop ist egal. Für SSH auf Windows: Windows Terminal oder PowerShell, beides hat SSH eingebaut.
 
-**Das Script sagt „Du sitzt nicht in einer SSH-Sitzung".**
+**Das Script sagt „Das sieht nach dem Coolify-Web-Terminal aus".**
 Du bist im Coolify-Web-Terminal. Das geht nicht (Abschnitt 5, „Terminal"). Öffne ein Terminal auf deinem Laptop und verbinde dich per SSH.
+
+**Das Script sagt „Ich kann nicht erkennen, wie du mit dem Server verbunden bist".**
+Kommt selten vor (z. B. in manchen Container- oder Hoster-Konsolen). Wenn du sicher bist, dass du per SSH von deinem Laptop verbunden bist: `sudo ./install.sh --force`.
 
 **Das Script sagt „Kein SSH-Key gefunden".**
 Dann wird die SSH-Phase übersprungen, alles andere läuft. Richte einen Key ein (Kurs Modul 3) und lass das Script danach nochmal laufen.

@@ -150,7 +150,7 @@ detect_system() {
 
   # Tier 1 = getestet, Tier 2 = sollte laufen, unbekannt = nur mit --force
   case "$OS_ID:$OS_VERSION" in
-    ubuntu:22.04|ubuntu:24.04|debian:12|debian:13) SUPPORT_TIER=1 ;;
+    ubuntu:22.04|ubuntu:24.04|ubuntu:26.04|debian:12|debian:13) SUPPORT_TIER=1 ;;
     *) [ "$OS_FAMILY" = "unbekannt" ] && SUPPORT_TIER=0 || SUPPORT_TIER=2 ;;
   esac
 
@@ -168,6 +168,103 @@ pkg_install() {
 }
 
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# ---------------------------------------------------------------------------
+# Sitzung erkennen: SSH, lokale Konsole oder Coolify-Web-Terminal?
+#
+# $SSH_CONNECTION reicht NICHT: sudo und "su -" werfen die Variable weg.
+# Deshalb laufen wir die Prozesskette hoch und suchen sshd als Vorfahren.
+# Die Client-IP holen wir dann von der Socket-Verbindung (ss).
+#
+# Setzt: SESSION_KIND = ssh | console | unknown
+#        SSH_CLIENT_IP = Quell-IP der SSH-Verbindung (leer, wenn unbekannt)
+# ---------------------------------------------------------------------------
+_strip_port_and_brackets() {
+  # "[::ffff:1.2.3.4]:51234" -> "1.2.3.4"  |  "1.2.3.4:51234" -> "1.2.3.4"
+  local a="$1"
+  a="${a%:*}"                # Port weg (letzter Doppelpunkt)
+  a="${a#[}"; a="${a%]}"     # eckige Klammern weg
+  a="${a#::ffff:}"           # IPv4-mapped IPv6 -> IPv4
+  printf '%s' "$a"
+}
+
+detect_session() {
+  SESSION_KIND="unknown"
+  SSH_CLIENT_IP=""
+
+  # 1) Umgebungsvariable (direkter Login als root oder sudo mit env_keep)
+  local env_conn="${SSH_CONNECTION:-${SSH_CLIENT:-}}"
+  if [ -n "$env_conn" ]; then
+    SESSION_KIND="ssh"
+    SSH_CLIENT_IP="$(printf '%s' "$env_conn" | awk '{print $1}')"
+  fi
+
+  # 2) Prozesskette: ist sshd ein Vorfahre? (ueberlebt sudo / su)
+  local pid=$$ comm ppid sshd_pids="" depth=0
+  while [ "$pid" -gt 1 ] && [ "$depth" -lt 30 ]; do
+    comm="$(cat "/proc/$pid/comm" 2>/dev/null)" || break
+    case "$comm" in
+      sshd|sshd-session|sshd-session*) sshd_pids="$sshd_pids $pid" ;;
+    esac
+    # /proc/<pid>/stat: alles nach der letzten ')' -> Feld 2 = ppid
+    ppid="$(sed 's/.*) //' "/proc/$pid/stat" 2>/dev/null | awk '{print $2}')"
+    [ -n "$ppid" ] || break
+    pid="$ppid"; depth=$(( depth + 1 ))
+  done
+  if [ -n "$sshd_pids" ]; then
+    SESSION_KIND="ssh"
+    if [ -z "$SSH_CLIENT_IP" ] && have ss; then
+      local p line
+      for p in $sshd_pids; do
+        line="$(ss -Htnp state established 2>/dev/null | grep -F "pid=$p," | head -n1)"
+        [ -n "$line" ] || continue
+        # Spalten ohne State: Recv-Q Send-Q Local Peer Process
+        SSH_CLIENT_IP="$(_strip_port_and_brackets "$(printf '%s' "$line" | awk '{print $4}')")"
+        [ -n "$SSH_CLIENT_IP" ] && break
+      done
+    fi
+    if [ -z "$SSH_CLIENT_IP" ] && have who; then
+      # Fallback: who -m zeigt "(1.2.3.4)" am Zeilenende
+      SSH_CLIENT_IP="$(who -m 2>/dev/null | sed -n 's/.*(\([^)]*\)).*/\1/p' | head -n1)"
+    fi
+  fi
+
+  # 3) Keine SSH-Spur: lokale Konsole (Rescue/serial/VNC)? Die kappt keine Firewall.
+  if [ "$SESSION_KIND" = "unknown" ]; then
+    local t
+    t="$(tty 2>/dev/null || true)"
+    case "$t" in
+      /dev/tty[0-9]*|/dev/ttyS*|/dev/hvc*|/dev/ttyAMA*|/dev/console) SESSION_KIND="console" ;;
+    esac
+  fi
+
+  export SESSION_KIND SSH_CLIENT_IP
+}
+
+# Kommt die SSH-Verbindung aus dem eigenen Server (Loopback / Docker-Netz)?
+# Dann ist es mit hoher Wahrscheinlichkeit das Coolify-Web-Terminal: Coolify
+# verbindet sich aus seinem Container per SSH mit dem Host.
+_ip4_to_int() { local IFS=.; set -- $1; echo $(( ($1<<24) + ($2<<16) + ($3<<8) + $4 )); }
+ssh_client_is_local() {
+  local ip="$1"
+  [ -n "$ip" ] || return 1
+  case "$ip" in
+    127.*|::1|localhost) return 0 ;;
+  esac
+  case "$ip" in *.*.*.*) ;; *) return 1 ;; esac
+  # Subnetze aller Docker-Bridges (docker0, br-*) pruefen
+  have ip || return 1
+  local cidr net bits ipn netn mask
+  ipn="$(_ip4_to_int "$ip")"
+  while read -r cidr; do
+    [ -n "$cidr" ] || continue
+    net="${cidr%/*}"; bits="${cidr#*/}"
+    netn="$(_ip4_to_int "$net")"
+    mask=$(( bits == 0 ? 0 : (0xFFFFFFFF << (32 - bits)) & 0xFFFFFFFF ))
+    [ $(( ipn & mask )) -eq $(( netn & mask )) ] && return 0
+  done < <(ip -4 -o addr show 2>/dev/null | awk '$2 ~ /^(docker[0-9]+|br-)/ {print $4}')
+  return 1
+}
 
 # ---------------------------------------------------------------------------
 # WATCHDOG – das Herzstueck gegen Aussperren

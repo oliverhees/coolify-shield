@@ -53,14 +53,30 @@ phase_preflight() {
 
   # --- Laeuft das hier im Coolify-Web-Terminal? ---------------------------
   # Wenn ja: Firewall-Aenderungen kappen die eigene Sitzung. Sofort abbrechen.
-  if [ -n "${SSH_CONNECTION:-}" ]; then
-    SSH_CLIENT_IP="$(printf '%s' "$SSH_CONNECTION" | awk '{print $1}')"
-    export SSH_CLIENT_IP
-    ok "Du bist per SSH verbunden (von $SSH_CLIENT_IP)"
-  else
-    die "Du sitzt nicht in einer SSH-Sitzung." \
-        "Nicht im Coolify-Web-Terminal ausfuehren – per SSH auf den Server, dann neu starten."
-  fi
+  # Erkennung ueber Prozesskette + Socket, nicht nur $SSH_CONNECTION
+  # (die wirft sudo weg). Siehe detect_session in 00-common.sh.
+  detect_session
+  case "$SESSION_KIND" in
+    ssh)
+      if ssh_client_is_local "$SSH_CLIENT_IP"; then
+        [ "$FORCE" = "1" ] \
+          && warn "SSH-Verbindung kommt vom Server selbst ($SSH_CLIENT_IP) – sieht nach Coolify-Web-Terminal aus, weiter wegen --force" \
+          || die "Das sieht nach dem Coolify-Web-Terminal aus (SSH-Verbindung von $SSH_CLIENT_IP, also vom Server selbst)." \
+                 "Per SSH von deinem Laptop auf den Server, dann neu starten. Firewall-Aenderungen wuerden diese Sitzung sonst kappen."
+      else
+        ok "Du bist per SSH verbunden${SSH_CLIENT_IP:+ (von $SSH_CLIENT_IP)}"
+      fi
+      ;;
+    console)
+      ok "Du sitzt an der lokalen Konsole – Firewall-Aenderungen koennen dich hier nicht aussperren"
+      ;;
+    *)
+      [ "$FORCE" = "1" ] \
+        && warn "Sitzungsart nicht erkennbar – weiter wegen --force" \
+        || die "Ich kann nicht erkennen, wie du mit dem Server verbunden bist (weder SSH noch lokale Konsole)." \
+               "Per SSH von deinem Laptop auf den Server. Wenn du sicher bist: mit --force starten."
+      ;;
+  esac
 
   # --- SSH-Key hinterlegt? ------------------------------------------------
   # Ohne funktionierenden Key darf Phase 30 spaeter nicht laufen.

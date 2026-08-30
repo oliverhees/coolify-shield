@@ -206,7 +206,7 @@ Phase 0 ändert nichts und bricht mit genau einem klaren Satz ab, wenn etwas feh
 | Distro erkannt (Tier 1/2) | Tier 0 nur mit `--force` |
 | Watchdog möglich (systemd-run oder `at`) | Abbruch — ohne Timer kein Risiko |
 | Docker + laufender `coolify`-Container | Abbruch (`--force` überspringt) |
-| Läuft in einer SSH-Sitzung (`$SSH_CONNECTION`) | **Abbruch** — du sitzt im Coolify-Web-Terminal |
+| Sitzungsart (SSH von außen, lokale Konsole oder Coolify-Web-Terminal) | **Abbruch** im Web-Terminal — erkannt an der Prozesskette und der Quell-IP, nicht nur an `$SSH_CONNECTION` (die wirft `sudo` weg) |
 | Mindestens ein SSH-Key hinterlegt | Warnung, SSH-Phase wird übersprungen |
 | Internet, ≥ 1 GB frei | Warnung |
 | Rescue-Konsole offen? (Rückfrage) | Abbruch — zu Recht |
@@ -328,7 +328,7 @@ Wer Tailscale bevorzugt, aber die Steuerungsebene selbst hosten will: **Headscal
 
 | Tier | Systeme | Verhalten |
 | --- | --- | --- |
-| **1 — getestet** | Ubuntu 22.04 / 24.04, Debian 12 / 13 | läuft |
+| **1 — getestet** | Ubuntu 22.04 / 24.04 / 26.04, Debian 12 / 13 | läuft |
 | **2 — sollte laufen** | Raspberry Pi OS, Fedora, Rocky, Alma, openSUSE, Arch/Manjaro | läuft mit Warnung |
 | **0 — unbekannt** | alles andere | nur mit `--force` |
 
