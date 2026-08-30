@@ -1,6 +1,6 @@
 # coolify-shield für absolute Anfänger
 
-> Du hast noch nie einen Server verwaltet, weißt nicht genau, was „SSH" oder „Firewall" bedeutet, und hast trotzdem Coolify installiert, weil du deine eigenen Apps oder KI-Tools hosten willst? **Dann ist diese Seite für dich.** Hier wird nichts vorausgesetzt. Alles wird einmal von Null erklärt: warum du das überhaupt brauchst, was das Script macht und wie es funktioniert.
+> Du hast noch nie einen Server verwaltet, weißt nicht genau, was „SSH" oder „Firewall" bedeutet, und willst trotzdem Coolify, weil du deine eigenen Apps oder KI-Tools hosten willst? Oder du hast Coolify schon installiert und ein ungutes Gefühl dabei? **Dann ist diese Seite für dich.** Hier wird nichts vorausgesetzt. Alles wird einmal von Null erklärt: warum du das überhaupt brauchst, was das Script macht und wie es funktioniert.
 >
 > Im Kurs gibt es dazu ein Video. Diese Seite ist die Version zum Nachlesen — du kannst sie neben dem Terminal offen lassen.
 
@@ -82,7 +82,7 @@ flowchart TB
         direction LR
         B2["🤖 Bots"] -->|"Port 80/443"| W2["deine Apps<br/>(sollen erreichbar sein)"]
         B2 -.->|"Port 8000: existiert nicht mehr"| X2(("❌"))
-        B2 -.->|"Port 22: nur mit Key,<br/>nur aus dem Tunnel"| X3(("❌"))
+        B2 -.->|"Port 22: nur noch Schlüssel,<br/>kein Passwort zu raten"| X3(("❌"))
         DU["📱 Du mit<br/>WireGuard-Tunnel"] ==>|"verschlüsselt"| D2["Coolify-Dashboard"]
         DU ==> S2["SSH"]
     end
@@ -142,11 +142,13 @@ Ein VPN ist ein **privater, verschlüsselter Tunnel** zwischen deinem Gerät (La
 
 Der Trick: **Wir machen das Coolify-Dashboard so, dass es nur noch durch den Tunnel erreichbar ist.** Von außen, aus dem normalen Internet, sieht man es gar nicht mehr. Die Bots finden keine Login-Seite, weil es für sie keine gibt. Nur wer durch den Tunnel kommt — also nur du mit deinem Schlüssel — sieht das Dashboard.
 
-Das Script richtet dafür **WireGuard** ein (ein VPN-Programm) mit **wg-easy** (einer einfachen Oberfläche dafür). Auf dem Handy: WireGuard-App installieren, QR-Code scannen, ein Schalter zum Verbinden. Fertig.
+Das Script richtet dafür **WireGuard** ein (ein VPN-Programm, das direkt im Linux-Kern steckt). Es erzeugt zwei Zugangsdateien: eine für deinen Laptop, eine für dein Handy. Auf dem Handy: WireGuard-App installieren, QR-Code scannen, ein Schalter zum Verbinden. Auf dem Laptop richtet das Start-Script den Tunnel selbst ein. Fertig.
 
 ### Warum kein Tailscale?
 
-Vielleicht hast du schon von Tailscale gehört — ein sehr beliebtes, sehr einfaches VPN. Es hat einen Haken: Die „Vermittlungsstelle" läuft bei einer Firma in den USA. Für Privatprojekte ist das oft okay. Wenn du aber Kundendaten verarbeitest oder es einfach sauber nach DSGVO haben willst, ist das ein Problem. **wg-easy läuft komplett auf deinem eigenen Server.** Niemand außer dir ist beteiligt.
+Vielleicht hast du schon von Tailscale gehört — ein sehr beliebtes, sehr einfaches VPN. Es hat einen Haken: Die „Vermittlungsstelle" läuft bei einer Firma in den USA. Für Privatprojekte ist das oft okay. Wenn du aber Kundendaten verarbeitest oder es einfach sauber nach DSGVO haben willst, ist das ein Problem. **WireGuard läuft komplett auf deinem eigenen Server.** Niemand außer dir ist beteiligt.
+
+Es gibt auch Programme, die WireGuard eine Weboberfläche verpassen (wg-easy zum Beispiel). Das Script nimmt so etwas absichtlich nicht: Eine Weboberfläche ist ein zweites Login mit einem zweiten Passwort, das man absichern und vor dem Internet verstecken muss. Für zwei Geräte lohnt das nicht, zwei Dateien reichen.
 
 ### Root — der Chef-Zugang
 
@@ -341,7 +343,7 @@ Speichern (`Strg + O`, Enter, `Strg + X`). Ab jetzt reicht:
 ssh coolify
 ```
 
-Das ist keine Kosmetik. Wenn dein Server nach dem Script nur noch durch den VPN-Tunnel erreichbar ist, trägst du hier einfach die Tunnel-Adresse ein und der Rest bleibt gleich.
+Das ist keine Kosmetik. Wenn das Script später einen eigenen Benutzer für dich anlegt, änderst du hier nur die `User`-Zeile und der Rest bleibt gleich. Der Anfänger-Weg schreibt diesen Block übrigens selbst für dich.
 
 ### 6.8 `sudo` — „mach das als Chef"
 
@@ -370,7 +372,7 @@ Warum das alte Fenster nicht zählt: Eine bestehende Verbindung ist wie jemand, 
 
 | Meldung | Bedeutet | Was tun |
 | --- | --- | --- |
-| `Connection refused` | Der Server antwortet, aber die SSH-Tür (Port 22) ist zu. | Firewall? Falscher Port? Nach dem Script: bist du im VPN-Tunnel? |
+| `Connection refused` | Der Server antwortet, aber die SSH-Tür (Port 22) ist zu. | Firewall? Falscher Port? SSH bleibt auch nach dem Script von außen erreichbar, dafür brauchst du keinen Tunnel. |
 | `Connection timed out` | Keine Antwort. | IP falsch? Server aus? Firewall blockt komplett? → Rescue-Konsole, [NOTFALL.md](NOTFALL.md). |
 | `Permission denied (publickey)` | Der Server will nur noch Keys, deiner passt nicht. | Key nicht hinterlegt oder falscher Key. Mit `ssh -i ~/.ssh/id_ed25519 …` den richtigen erzwingen. |
 | `Permission denied, please try again` | Passwort falsch. | Nochmal. Beim Tippen siehst du nichts — das ist normal. |
@@ -384,11 +386,11 @@ Warum das alte Fenster nicht zählt: Eine bestehende Verbindung ist wie jemand, 
 
 Ein paar Namen, die dir im Script begegnen. Du musst sie nicht bedienen können — nur wissen, was sie sind.
 
-**Docker und Container.** Docker verpackt jedes Programm in eine eigene abgeschlossene Kiste, den *Container*. Coolify läuft in einem Container, deine Apps laufen in Containern, das VPN wird ein Container. Vorteil: Sie kommen sich nicht in die Quere, und man kann sie einzeln starten, stoppen, löschen. `docker ps` zeigt, welche gerade laufen.
+**Docker und Container.** Docker verpackt jedes Programm in eine eigene abgeschlossene Kiste, den *Container*. Coolify läuft in einem Container, deine Apps laufen in Containern. Vorteil: Sie kommen sich nicht in die Quere, und man kann sie einzeln starten, stoppen, löschen. `docker ps` zeigt, welche gerade laufen. Eine Eigenheit von Docker musst du kennen: Es öffnet seine Türen an der normalen Firewall vorbei. Deshalb schreibt das Script die Sperre für das Dashboard an eine Stelle, die Docker extra dafür vorsieht (sie heißt `DOCKER-USER`).
 
-**Traefik.** Der Verteiler. Wenn ein Besucher `deine-app.de` aufruft, kommt die Anfrage an Port 80 oder 443 an — und Traefik schaut, welcher Container dafür zuständig ist, und reicht sie weiter. Coolify steuert Traefik für dich. Das Script legt Traefik später eine Regel hin: „Das Dashboard nur aus dem Tunnel ausliefern."
+**Traefik.** Der Verteiler. Wenn ein Besucher `deine-app.de` aufruft, kommt die Anfrage an Port 80 oder 443 an — und Traefik schaut, welcher Container dafür zuständig ist, und reicht sie weiter. Coolify steuert Traefik für dich. Das Script fasst Traefik nicht an.
 
-**wg-easy.** Das VPN-Programm als Container, mit einer kleinen Weboberfläche, auf der du Geräte anlegst und QR-Codes bekommst.
+**WireGuard.** Das VPN-Programm. Es läuft nicht als Container, sondern direkt im Linux-Kern des Servers. Die Zugangsdateien für Laptop und Handy liegen unter `/var/lib/coolify-shield/wireguard/`.
 
 **systemd.** Der Dienst-Manager von Linux. Er startet Programme beim Hochfahren und — wichtig für uns — er kann **Timer** stellen. Der Rückfall-Timer ist ein systemd-Timer.
 
@@ -417,67 +419,105 @@ Mehr brauchst du für coolify-shield nicht. Alles andere macht das Script.
 
 ## 7. Was das Script macht — Schritt für Schritt erklärt
 
-Das Script läuft in **Phasen**. Jede Phase hat einen Namen, und nach jeder Phase sagt dir das Script, an welcher Stelle im Kurs es weitergeht. Hier ist, was in jeder Phase passiert und **warum**.
+Der Anfänger-Weg besteht aus zwei Teilen, die sich abwechseln: einem Script auf **deinem Laptop** (`start.sh` auf Mac und Linux, `start.ps1` auf Windows) und einem Script auf **dem Server** (`install.sh --setup`). Das Laptop-Script legt den Schlüssel an, hilft dir beim Bestellen, lädt den Server-Teil hoch und startet ihn. Der Server-Teil läuft dann in **Phasen** durch. Nach jedem riskanten Schritt gibt der Server die Kontrolle kurz an den Laptop zurück, der von außen prüft, ob du noch reinkommst.
+
+### Der Block, den du nach jedem Schritt siehst
+
+Egal ob Laptop oder Server: Nach jedem Schritt steht so ein Block im Terminal.
+
+```
+  ✓ Erledigt:      Schlüssel liegt in ~/.ssh/coolify-shield, SSH-Eintrag "coolify" steht
+  ▶ Als Nächstes:  Server bei Hetzner bestellen. Ich sage dir, wo du klickst.
+  ⏸ Du musst jetzt: Nichts. Nur warten, etwa eine Minute.
+```
+
+- **✓ Erledigt** sagt dir, was gerade fertig geworden ist. Wenn du später im Terminal hochscrollst, siehst du an diesen Zeilen, wie weit du bist.
+- **▶ Als Nächstes** sagt dir, was gleich passiert, damit dich nichts überrascht.
+- **⏸ Du musst jetzt** erscheint nur, wenn du wirklich gebraucht wirst: etwas anklicken, etwas eintippen, einen QR-Code scannen. Steht die Zeile nicht da, brauchst du nichts zu tun. Wenn du dir bei einer Frage nicht sicher bist: Der Vorschlag in eckigen Klammern ist die sichere Antwort, Enter drücken reicht.
+
+Bricht irgendwas ab (Netz weg, Laptop zugeklappt, du hast `Strg + C` gedrückt), startest du das Laptop-Script einfach nochmal. Es merkt sich pro Server, wo es war, und der Server merkt sich, welche Phasen schon erledigt sind. Nichts wird doppelt gemacht.
 
 ```mermaid
 flowchart TD
-    P0["Phase 0 · Preflight<br/><i>Darf ich hier loslegen?</i>"] --> P1["Phase 1 · Bestandsaufnahme<br/><i>Wie schlimm ist es?</i>"]
-    P1 --> PA["Phase A · Grundlagen<br/>Auto-Updates · Brute-Force-Schutz"]
-    PA --> B3["Phase B3 · VPN-Tunnel bauen<br/>⏱ mit Rückfall-Timer"]
-    B3 --> B1["Phase B1 · SSH härten<br/>⏱ mit Rückfall-Timer"]
-    B1 --> B2["Phase B2 · Firewall zu<br/>⏱ mit Rückfall-Timer"]
-    B2 --> P9["Phase 9 · Report<br/>Score 0–100 + Restliste"]
-    P9 --> DU["👆 Du: 2FA · Registrierung aus · Passwort"]
-    style P0 fill:#455a64,color:#fff
-    style P1 fill:#455a64,color:#fff
-    style PA fill:#2e7d32,color:#fff
-    style B3 fill:#ef6c00,color:#fff
-    style B1 fill:#ef6c00,color:#fff
-    style B2 fill:#ef6c00,color:#fff
-    style P9 fill:#1565c0,color:#fff
+    L1["Laptop 1 · Dein Schlüssel"] --> L2["Laptop 2 · Server bestellen<br/>👆 du klickst bei Hetzner"]
+    L2 --> L3["Laptop 3 · Erster Login"]
+    L3 --> P0["Server 0 · Preflight<br/><i>Darf ich hier loslegen?</i>"]
+    P0 --> P1["Server 1 · Updates<br/>evtl. ein Neustart"]
+    P1 --> P2["Server 2 · Coolify installieren"]
+    P2 --> P3["Server 3 · Dein Coolify-Account<br/>👆 du registrierst dich"]
+    P3 --> P4["Server 4 · Dein eigener Benutzer"]
+    P4 --> P5["Server 5 · VPN-Tunnel (WireGuard)<br/>📱 QR-Code fürs Handy"]
+    P5 --> P6["Server 6 · Grundschutz"]
+    P6 --> P7["Server 7 · SSH nur noch Schlüssel<br/>⏱ Laptop prüft und bestätigt"]
+    P7 --> P8["Server 8 · Firewall<br/>⏱ Laptop prüft und bestätigt"]
+    P8 --> P9["Server 9 · Coolify absichern<br/>👆 du klickst, Script prüft nach"]
+    P9 --> R["Server · Bestandsaufnahme + Report"]
+    R --> L5["Laptop 5 · Dein Tunnel<br/>Dashboard-Test"]
+    style L1 fill:#455a64,color:#fff
+    style L2 fill:#455a64,color:#fff
+    style L3 fill:#455a64,color:#fff
+    style L5 fill:#455a64,color:#fff
+    style P0 fill:#607d8b,color:#fff
+    style P3 fill:#f9a825,color:#000
+    style P7 fill:#ef6c00,color:#fff
+    style P8 fill:#ef6c00,color:#fff
+    style P9 fill:#f9a825,color:#000
+    style R fill:#1565c0,color:#fff
 ```
 
-### Phase 0 · Preflight — „Darf ich hier überhaupt loslegen?"
+### Laptop 1 · Dein Schlüssel
 
-**Was passiert:** Das Script schaut sich um, **ändert aber nichts.** Es prüft:
+**Was passiert:** Das Script fragt dich nach einem kurzen Namen für deinen Server (Vorschlag: `coolify`) und erzeugt dann ein Schlüsselpaar unter `~/.ssh/coolify-shield/`. Du kannst den Schlüssel mit einer Passphrase schützen, das ist empfohlen. Danach trägt es den Server in deine SSH-Config ein, sodass später `ssh coolify` reicht, und kopiert den öffentlichen Teil in deine Zwischenablage.
 
-- Bist du Root? (Sonst kann es nichts ändern.)
-- Welches Linux läuft hier? (Ubuntu, Debian, Fedora … — das Script muss wissen, welche Befehle es benutzen darf.)
-- Läuft Coolify überhaupt? (Sonst ergibt das Script keinen Sinn.)
-- Bist du **per SSH** verbunden oder sitzt du im Coolify-Web-Terminal? (Im Web-Terminal: sofortiger Abbruch — siehe oben.)
-- Ist ein SSH-Key hinterlegt? (Wenn nicht, wird der Passwort-Login später **nicht** abgeschaltet — sonst kämst du nie wieder rein.)
-- Kann das Script einen Rückfall-Timer setzen? (Wenn nicht, macht es **nichts Riskantes**. Kein Netz, kein Sprung.)
-- Hast du die Rescue-Konsole offen? (Es fragt dich. Antworte ehrlich.)
+**Warum:** Der Schlüssel ist das Erste, weil er beim Bestellen schon hinterlegt wird. Dann gibt es auf deinem neuen Server von der ersten Sekunde an keinen Passwort-Login, den Bots durchprobieren könnten.
 
-**Warum:** Fast jeder Server-Unfall passiert, weil jemand eine Änderung gemacht hat, für die die Voraussetzung fehlte. Das Script weigert sich einfach, in so einer Situation weiterzumachen. Wenn es abbricht, sagt es dir **in einem Satz**, was fehlt und was du tun sollst. Kein Fehlercode, kein Kauderwelsch.
+### Laptop 2 · Server bestellen (Hetzner)
 
-### Phase 1 · Bestandsaufnahme — „Wie schlimm ist es gerade?"
+**Was passiert:** Das Script zeigt dir deinen öffentlichen Schlüssel und eine Anleitung: Hetzner-Konto, Schlüssel hinterlegen, Server mit Ubuntu 24.04 und mindestens 4 GB RAM bestellen, dabei deinen Schlüssel **anhaken**, und einmal die Rescue-Konsole öffnen. Das Script bestellt nichts für dich und braucht keinen Zugang zu deinem Hetzner-Konto. Du klickst, es wartet. Wenn der Server steht, tippst du seine IP-Adresse ein.
 
-**Was passiert:** Das Script prüft neun Dinge und zeigt dir eine Ampel:
+**Warum von Hand:** Du sollst sehen, wo dein Server liegt und was er kostet, und du sollst wissen, wo der Notausgang ist. Das kann kein Script für dich wissen.
 
-- 🟢 Grün: passt
-- 🟡 Gelb: sollte man machen
-- 🔴 Rot: gefährlich, dringend
+### Laptop 3 · Erster Login
 
-Geprüft wird zum Beispiel: Ist der Passwort-Login per SSH noch an? Läuft eine Firewall? Sind die Coolify-Türen (8000, 6001, 6002) von außen erreichbar? Gibt es Schutz gegen Passwort-Rateversuche? Werden Sicherheitsupdates automatisch eingespielt?
+**Was passiert:** Das Script probiert, ob es mit deinem Schlüssel auf den Server kommt, und wartet dabei bis zu drei Minuten, weil ein frischer Server ein bisschen braucht. Klappt es nicht, sagt es dir die drei häufigsten Gründe (Schlüssel beim Bestellen nicht angehakt, IP vertippt, Server noch nicht fertig). Klappt es, lädt es den Server-Teil nach `/opt/coolify-shield` hoch und startet ihn.
 
-**Warum:** Damit du siehst, wo du stehst — und nachher, was sich verbessert hat. Und weil ein Script, das nur liest, nichts kaputtmachen kann. Diese Phase kannst du beliebig oft laufen lassen (`sudo ./install.sh --audit`).
+**Warum:** Ab hier redet der Server mit dir. Das Laptop-Script bleibt aber im Hintergrund dran und übernimmt wieder, wenn der Server neu startet oder ein Rückfall-Timer läuft.
 
-### Phase A · Grundlagen — „Die Sachen, bei denen nichts schiefgehen kann"
+### Server 0 · Preflight — „Darf ich hier überhaupt loslegen?"
 
-**Was passiert:** Drei Dinge, die deinen Zugang **nicht** berühren und dich deshalb nicht aussperren können:
+**Was passiert:** Der Server-Teil schaut sich um, **ändert aber nichts.** Er prüft, ob er als Root läuft, welches Linux das ist, ob er einen Rückfall-Timer stellen kann, ob du per SSH verbunden bist (und nicht im Coolify-Web-Terminal sitzt), ob Internet da ist und ob genug Platz frei ist. Und er fragt dich, ob die Rescue-Konsole offen ist. Antworte ehrlich.
 
-1. **Automatische Sicherheitsupdates.** Dein Server installiert Sicherheits-Patches nachts von selbst. Du musst nicht daran denken.
-2. **Schutz gegen Passwort-Rateversuche (CrowdSec oder fail2ban).** Ein Programm beobachtet, wer sich falsch einloggen will. Wer es zu oft versucht, wird gesperrt. Die Bots aus Abschnitt 4 laufen damit ins Leere.
-3. **Vorbereitung der Dashboard-Sperre.** Die Regel „Dashboard nur über VPN" wird schon geschrieben — aber **noch nicht eingeschaltet.** Das passiert erst, wenn der VPN-Tunnel nachweislich steht.
+**Warum:** Fast jeder Server-Unfall passiert, weil jemand eine Änderung gemacht hat, für die die Voraussetzung fehlte. Das Script weigert sich einfach, in so einer Situation weiterzumachen. Wenn es abbricht, sagt es dir **in einem Satz**, was fehlt und was du tun sollst.
 
-**Warum zuerst:** Weil es risikofrei ist. Selbst wenn du nach dieser Phase abbrichst, ist dein Server schon deutlich sicherer — und du hast nichts riskiert.
+### Server 1 · Updates — „Erst mal alles auf den neuesten Stand"
 
-### Phase B3 · VPN — „Den geheimen Tunnel bauen"
+**Was passiert:** Alle Updates werden eingespielt, ein paar Werkzeuge installiert (Firewall, fail2ban, WireGuard), die Uhr auf Europe/Berlin gestellt und 2 GB Auslagerungsspeicher angelegt, damit der Server bei größeren Coolify-Builds nicht umkippt. Manchmal bringt ein Update einen neuen Linux-Kern mit. Dann muss der Server einmal neu starten.
 
-**Was passiert:** Das Script installiert wg-easy (dein VPN), legt den ersten Zugang für dein Handy an und zeigt dir **direkt im Terminal einen QR-Code**. Den scannst du mit der WireGuard-App auf dem Handy. Ab dann kannst du mit einem Fingertipp „in den Tunnel" und bist damit quasi *im* Server-Netz.
+**Was du davon merkst:** Steht da „Der Server startet einmal neu", brauchst du nichts zu tun. Das Laptop-Script wartet, bis der Server wieder da ist, und macht dann von selbst bei Phase 2 weiter. Das dauert etwa eine Minute.
 
-**Warum vor der Firewall:** Das ist der wichtigste Punkt in der ganzen Reihenfolge. Wenn wir *erst* die Türen schließen und *dann* den Tunnel bauen wollen — haben wir keinen Weg mehr rein, um den Tunnel zu bauen. **Erst den Notausgang bauen, dann die Haustür abschließen.** Immer.
+### Server 2 · Coolify installieren
+
+**Was passiert:** Der offizielle Coolify-Installer läuft durch. Docker kommt dabei automatisch mit. Das Script wartet danach, bis das Dashboard auf Port 8000 antwortet. Dauer: 3 bis 5 Minuten.
+
+### Server 3 · Dein Coolify-Account — „Das muss jetzt sofort passieren"
+
+**Was passiert:** Das Script zeigt dir eine Adresse wie `http://65.21.12.34:8000`. Die öffnest du im Browser, klickst auf **Register** und legst deinen Account an. Nimm ein langes Passwort aus dem Passwort-Manager, 25 Zeichen oder mehr. Danach drückst du im Terminal Enter, und das Script schaut in der Coolify-Datenbank nach, ob wirklich ein Nutzer existiert.
+
+**Warum sofort und nicht am Ende:** Der **erste** Account in Coolify ist der Chef. Solange der nicht existiert, könnte ihn jeder aus dem Internet anlegen, der die Adresse errät. Deshalb kommt dieser Schritt direkt nach der Installation, noch vor allem anderen.
+
+### Server 4 · Dein eigener Benutzer — „Nicht mehr als root arbeiten"
+
+**Was passiert:** Du bekommst einen eigenen Benutzer auf dem Server (Vorschlag: `admin`). Der darf mit `sudo` Chef-Rechte holen, ohne dafür ein Passwort zu tippen, und dein Schlüssel vom Laptop gilt auch für ihn. Ein Passwort bekommt er nicht: Login geht nur per Schlüssel, und ein Passwort, das man nie tippt, vergisst man nur.
+
+**Was du davon merkst:** Das Laptop-Script stellt deine SSH-Config um. Ab jetzt landet `ssh coolify` bei deinem Benutzer, nicht mehr bei root. Root selbst bleibt per Schlüssel erreichbar, weil Coolify das für sich selbst braucht.
+
+### Server 5 · VPN-Tunnel (WireGuard) — „Den geheimen Tunnel bauen"
+
+**Was passiert:** Das Script richtet WireGuard direkt auf dem Server ein und erzeugt zwei Zugangsdateien: eine für deinen Laptop, eine für dein Handy. Für das Handy zeigt es **direkt im Terminal einen QR-Code**. WireGuard-App installieren, Plus drücken, „Aus QR-Code erstellen", scannen. Das kannst du jetzt oder später machen. Die Laptop-Datei holt sich das Laptop-Script am Ende von selbst.
+
+Im Tunnel hat dein Server die Adresse `10.8.0.1`, das Dashboard liegt dann unter `http://10.8.0.1:8000`. Der Tunnel ist ein sogenannter Split-Tunnel: Nur der Weg zu deinem Server geht hindurch, YouTube und Mail laufen weiter wie bisher.
+
+**Warum vor der Firewall:** Das ist der wichtigste Punkt in der ganzen Reihenfolge. Wenn wir *erst* die Türen schließen und *dann* den Tunnel bauen wollen, haben wir keinen Weg mehr zum Dashboard. **Erst den Notausgang bauen, dann die Haustür abschließen.** Immer.
 
 ```mermaid
 flowchart LR
@@ -493,20 +533,20 @@ flowchart LR
     style R3 fill:#2e7d32,color:#fff
 ```
 
-### Phase B1 · SSH härten — „Nur noch mit Schlüssel, nicht mehr mit Passwort"
+### Server 6 · Grundschutz — „Die Sachen, bei denen nichts schiefgehen kann"
 
-**Was passiert:** Das Script ändert die SSH-Einstellungen so, dass:
+**Was passiert:** Zwei Dinge, die deinen Zugang **nicht** berühren und dich deshalb nicht aussperren können:
 
-- Passwort-Login **aus** ist (nur noch SSH-Keys)
-- Root sich nicht mehr mit Passwort einloggen kann (nur noch mit Key — ganz abschalten geht nicht, Coolify braucht das für sich selbst)
+1. **Automatische Sicherheitsupdates.** Dein Server installiert Sicherheits-Patches nachts von selbst. Du musst nicht daran denken.
+2. **Schutz gegen Passwort-Rateversuche (fail2ban).** Ein Programm beobachtet, wer sich falsch einloggen will. Nach fünf Fehlversuchen ist die Adresse eine Stunde gesperrt. Die Bots aus Abschnitt 4 laufen damit ins Leere. Coolify selbst und dein Tunnel sind von der Sperre ausgenommen, sonst würde Coolify sich irgendwann selbst aussperren.
 
-Vorher wird die Einstellungsdatei gesichert. Danach wird geprüft, ob die Datei noch gültig ist. Erst dann wird SSH neu geladen — und zwar so, dass deine bestehende Verbindung **nicht** abbricht.
+### Server 7 · SSH absichern — „Nur noch mit Schlüssel, nicht mehr mit Passwort"
 
-**Warum:** Der Passwort-Login ist die Tür, an der die Bots Tag und Nacht rütteln. Ohne Passwort-Login gibt es nichts zu rütteln.
+**Was passiert:** Das Script ändert die SSH-Einstellungen so, dass Passwort-Login **aus** ist und root sich nur noch mit Schlüssel einloggen kann. Vorher wird geprüft, ob überhaupt ein Schlüssel hinterlegt ist; wenn nicht, wird diese Phase übersprungen. Danach wird geprüft, ob die neue Einstellung gültig ist, und erst dann wird SSH neu geladen, ohne deine bestehende Verbindung zu kappen.
 
-**Mit Rückfall-Timer!** Siehe Abschnitt 7. Wenn du dich danach nicht mehr einloggen kannst, macht der Server es nach 10 Minuten von selbst rückgängig.
+**Mit Rückfall-Timer!** Bevor irgendwas geändert wird, stellt der Server einen Timer auf 10 Minuten. Dann gibt er die Kontrolle an dein Laptop-Script zurück. Das öffnet eine frische Verbindung, prüft, dass der Login mit Schlüssel klappt **und** dass der Login ohne Schlüssel nicht mehr klappt, und bestätigt dann. Du siehst „✓ Bestätigt, Rückfall-Timer entschärft". Klappt der Test nicht, bestätigt das Laptop-Script nichts, und der Server nimmt die Änderung nach 10 Minuten von selbst zurück. Mehr dazu in [Abschnitt 8](#8-der-rückfall-timer--warum-du-dich-nicht-aussperren-kannst).
 
-### Phase B2 · Firewall — „Alle Türen zu, außer denen, die offen sein müssen"
+### Server 8 · Firewall — „Alle Türen zu, außer denen, die offen sein müssen"
 
 **Was passiert:** Der Türsteher bekommt seine Liste:
 
@@ -514,19 +554,35 @@ Vorher wird die Einstellungsdatei gesichert. Danach wird geprüft, ob die Datei 
 | --- | --- |
 | Webseiten (80, 443) | alle — sonst sieht niemand deine Apps |
 | VPN-Einwahl (51820) | alle — sonst kommst du nicht in den Tunnel |
-| SSH (22) | nur aus dem Tunnel |
+| SSH (22) | alle, aber nur mit Schlüssel. fail2ban steht davor |
 | Coolify-Dashboard (8000, 6001, 6002) | nur aus dem Tunnel |
 | alles andere | niemand |
 
-**Warum:** Damit das Coolify-Dashboard, das eigentliche Ziel, **aus dem Internet verschwindet.** Die Bots sehen: Port 80, Port 443, sonst nichts. Die Login-Seite, die sie suchen, existiert für sie nicht mehr.
+**Warum bleibt SSH offen?** Weil ein Tunnel auch mal kaputtgehen kann (Handy weg, Laptop neu aufgesetzt, Datei verloren). Wäre SSH nur aus dem Tunnel erreichbar, wärst du dann ausgesperrt, und genau das soll dieses Script verhindern. Ein SSH, das nur Schlüssel annimmt, ist für Bots kein Ziel. Sie klingeln, es passiert nichts, sie ziehen weiter.
 
-**Mit Rückfall-Timer!** Auch hier: 10 Minuten. Wenn du dich ausgesperrt hast, geht die Firewall von selbst wieder auf.
+**Ein Detail, das du kennen solltest:** Docker, das Programm, in dem Coolify läuft, öffnet seine Türen an der normalen Firewall vorbei. Ein einfaches „Port 8000 zu" würde bei Coolify nichts bewirken. Deshalb schreibt das Script die Dashboard-Sperre an eine Stelle, die Docker extra dafür vorsieht. Das ist der Grund, warum viele Anleitungen im Netz an dieser Stelle scheitern und die Leute glauben, ihre Firewall wäre an, obwohl das Dashboard weiter offen ist.
 
-### Phase 9 · Report — „Wie gut steht dein Server jetzt?"
+**Warum:** Damit das Coolify-Dashboard, das eigentliche Ziel, **aus dem Internet verschwindet.** Die Bots sehen: Port 80, Port 443, Port 22 mit Schlüsselpflicht, sonst nichts. Die Login-Seite, die sie suchen, existiert für sie nicht mehr.
 
-**Was passiert:** Das Script schreibt eine HTML-Datei mit Ampel und einem **Sicherheits-Score von 0 bis 100**, plus einer Liste der Dinge, die du noch selbst im Dashboard klicken musst (Abschnitt 8).
+**Mit Rückfall-Timer!** Auch hier: 10 Minuten. Das Laptop-Script prüft von außen, ob SSH noch geht und ob Port 8000 wirklich zu ist (über IPv4 und IPv6), und bestätigt dann. Wenn nicht, geht die Firewall von selbst wieder auf.
 
-**Warum:** Damit du ein Ergebnis in der Hand hast — und damit du beim nächsten Lauf siehst, was sich geändert hat.
+### Server 9 · Coolify absichern — „Zwei Klicks, die kein Script machen kann"
+
+**Was passiert:** Das Script sagt dir, dass du jetzt den Tunnel auf dem Laptop brauchst, und zeigt die Tunnel-Adresse des Dashboards. Dort schaltest du die **Registrierung aus** und **Zwei-Faktor an**. Wie genau, steht in [Abschnitt 9](#9-was-du-selbst-klicken-musst-und-warum-das-script-das-nicht-kann). Dann drückst du Enter, und das Script schaut in der Coolify-Datenbank nach, ob beides sitzt. Es klickt nichts für dich, es prüft nur.
+
+**Was, wenn du es nicht schaffst:** Nach drei Anläufen macht das Script trotzdem weiter und schreibt den Punkt als offen in den Report. Du kannst ihn jederzeit nachholen.
+
+### Server · Bestandsaufnahme und Report — „Wie gut steht dein Server jetzt?"
+
+**Was passiert:** Das Script prüft neun Dinge (Passwort-Login aus? Firewall an? Coolify-Türen von außen zu? Brute-Force-Schutz? Automatische Updates? VPN?) und zeigt dir eine Ampel: 🟢 passt, 🟡 sollte man machen, 🔴 dringend. Dann schreibt es eine HTML-Datei mit einem **Sicherheits-Score von 0 bis 100** und der Liste der Dinge, die noch offen sind.
+
+**Warum:** Damit du ein Ergebnis in der Hand hast. Die Bestandsaufnahme kannst du später beliebig oft wiederholen: `ssh coolify sudo /opt/coolify-shield/install.sh --audit`.
+
+### Laptop 5 · Dein Tunnel
+
+**Was passiert:** Das Laptop-Script holt sich die Laptop-Zugangsdatei vom Server. Auf dem Mac öffnet es die WireGuard-App (oder den App Store, falls sie fehlt) und sagt dir, wie du die Datei importierst und den Tunnel einschaltest. Auf Linux installiert es WireGuard und schaltet den Tunnel selbst ein. Dann testet es, ob das Dashboard unter `http://10.8.0.1:8000` antwortet.
+
+**Danach:** Das Script zeigt dir eine Zusammenfassung: wie du ins Dashboard kommst (Tunnel an, dann die Tunnel-Adresse), wie du auf den Server kommst (`ssh coolify`), und wo NOTFALL.md liegt. Ab hier ist der Server fertig eingerichtet und abgesichert.
 
 ---
 
@@ -545,7 +601,7 @@ Das Script benutzt einen Trick, den Netzwerk-Profis seit Jahrzehnten benutzen, w
 1. **Bevor** die riskante Änderung gemacht wird, stellt das Script einen **Timer auf 10 Minuten**. Der Timer hat einen Auftrag: „Wenn ich ablaufe, mache die Änderung rückgängig."
 2. **Dann** wird die Änderung gemacht.
 3. **Du** öffnest ein **zweites, neues** Terminal-Fenster und versuchst, dich neu einzuloggen.
-4. **Klappt es?** Dann tippst du `sudo ./install.sh --confirm`. Das sagt dem Timer: „Alles gut, du kannst dich abschalten." Die Änderung bleibt.
+4. **Klappt es?** Dann tippst du `sudo ./install.sh --confirm`. Das sagt dem Timer: „Alles gut, du kannst dich abschalten." Die Änderung bleibt. (Im Anfänger-Weg musst du das nicht selbst tun: Das Script auf deinem Laptop öffnet eine frische Verbindung, testet und bestätigt für dich. Du siehst nur „✓ Bestätigt, Rückfall-Timer entschärft".)
 5. **Klappt es nicht?** Dann tust du **gar nichts.** Du wartest. Nach 10 Minuten läuft der Timer ab, der Server macht die Änderung von selbst rückgängig, und du kommst wieder rein. Als wäre nichts gewesen.
 
 ```mermaid
@@ -580,27 +636,29 @@ Dann gibt es [NOTFALL.md](NOTFALL.md). Erster Schritt dort: **12 Minuten warten.
 
 Drei Dinge kann das Script **nicht** für dich erledigen. Nicht, weil es technisch unmöglich wäre — sondern weil es dafür in Coolifys interne Datenbank schreiben müsste. Und ein Script, das hunderte Leute auf ihren Servern laufen lassen, hat in einer fremden Datenbank **nichts zu suchen.** Wenn da etwas schiefgeht, ist dein Coolify kaputt. Das Risiko gehen wir nicht ein.
 
-Deshalb: **3 Minuten Klickarbeit für dich.** Der Report listet sie dir am Ende auf.
+Was das Script aber tut: Es **liest** in der Datenbank nach, ob du die Klicks gemacht hast (Phase 9). Lesen ist harmlos. Du kannst also nicht versehentlich vergessen, dass etwas offen ist.
+
+Deshalb: **3 Minuten Klickarbeit für dich.** Im Anfänger-Weg sagt dir das Script in Phase 9, wann. Der Report listet am Ende auf, was noch fehlt.
 
 ### 1. Zwei-Faktor-Authentifizierung (2FA) einschalten
 
 **Was es ist:** Zusätzlich zum Passwort brauchst du beim Login einen 6-stelligen Code, den eine App auf deinem Handy alle 30 Sekunden neu erzeugt. Selbst wenn jemand dein Passwort hat, kommt er ohne dein Handy nicht rein.
 
-**Wie:** Im Coolify-Dashboard: **Profil → Two-factor Authentication → Configure.** QR-Code mit einer Authenticator-App scannen (z. B. Aegis, 2FAS, Google Authenticator, Microsoft Authenticator). Den Code eingeben, **Validate** klicken. Erst dann ist es aktiv.
+**Wie:** Im Coolify-Dashboard oben rechts: **Profil → Two-factor Authentication → Enable.** QR-Code mit einer Authenticator-App scannen (z. B. Aegis, 2FAS, Google Authenticator, Microsoft Authenticator). Den Code eingeben. Erst dann ist es aktiv.
 
-**Ganz wichtig:** Du bekommst **Recovery-Codes** angezeigt. Das sind Notfall-Codes für den Fall, dass dein Handy weg ist. Speichere sie im Passwort-Manager. **Nicht** auf dem Server. **Nicht** auf demselben Handy wie die App. Wenn du diese Codes verlierst und dein Handy verlierst, bist du aus deinem eigenen Coolify ausgesperrt.
+**Ganz wichtig:** Du bekommst **Wiederherstellungscodes** angezeigt. Das sind Notfall-Codes für den Fall, dass dein Handy weg ist. Speichere sie im Passwort-Manager. **Nicht** auf dem Server. **Nicht** auf demselben Handy wie die App. Wenn du diese Codes verlierst und dein Handy verlierst, bist du aus deinem eigenen Coolify ausgesperrt.
 
 ### 2. Registrierung abschalten
 
 **Was es ist:** Coolify erlaubt am Anfang, dass sich beliebige Leute einen Account anlegen. Das ist für dich sinnlos und gefährlich.
 
-**Wie:** **Settings → Registration Allowed → aus.**
+**Wie:** **Settings → Registration Allowed → aus → Save.**
 
-### 3. Passwort tauschen
+### 3. Ein langes Passwort
 
 **Was es ist:** Wenn dein Coolify-Passwort kürzer als 20 Zeichen ist oder du es dir merken kannst, ist es zu schwach.
 
-**Wie:** Passwort-Manager aufmachen (Bitwarden, 1Password, KeePass …), ein Passwort mit **25 oder mehr Zeichen** generieren lassen, in Coolify unter Profil ändern. Du musst es dir nicht merken — der Manager macht das.
+**Wie:** Im Anfänger-Weg legst du den Account in Phase 3 an, also nimm gleich dort ein gutes Passwort: Passwort-Manager aufmachen (Bitwarden, 1Password, KeePass …), ein Passwort mit **25 oder mehr Zeichen** generieren lassen. Hast du Coolify schon und das Passwort ist zu kurz: in Coolify unter Profil ändern. Du musst es dir nicht merken — der Manager macht das.
 
 **Warum so lang:** Dein Coolify-Passwort *ist* dein Root-Passwort. Behandle es so.
 
@@ -608,15 +666,69 @@ Deshalb: **3 Minuten Klickarbeit für dich.** Der Report listet sie dir am Ende 
 
 ## 10. Der komplette Ablauf — was du wann tippst
 
-Hier der ganze Weg, von Anfang bis Ende. Alle Befehle werden **auf dem Server** getippt, nachdem du dich per SSH verbunden hast.
+Hier der ganze Weg, von Anfang bis Ende. Im Anfänger-Weg tippst du genau **einen** Befehl, und zwar **auf deinem Laptop**. Alles andere erklärt dir das Script, während es läuft.
 
-### Vorbereitung (einmalig, ca. 10 Minuten)
+### Was du brauchst
+
+- Einen Laptop oder PC mit Mac, Linux oder Windows 10/11.
+- Ein Hetzner-Konto, oder 5 Minuten, um eins anzulegen. Eine Kreditkarte oder PayPal für die Bestellung.
+- Ein Handy mit der WireGuard-App (kostenlos im App Store / Play Store). Kannst du auch später nachholen.
+- Etwa 30 Minuten Zeit, in denen du am Rechner bleibst.
+
+Einen Server brauchst du **nicht** vorher. Der wird unterwegs bestellt.
+
+### Der eine Befehl
+
+**Mac und Linux:** Terminal öffnen (siehe [6.1](#61-das-terminal-öffnen)), diese Zeile einfügen, Enter:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/oliverhees/coolify-shield/main/start.sh -o start.sh && bash start.sh
+```
+
+**Windows:** PowerShell öffnen (Startmenü, „PowerShell" tippen, Enter), diese Zeile einfügen, Enter:
+
+```powershell
+irm https://raw.githubusercontent.com/oliverhees/coolify-shield/main/start.ps1 -OutFile start.ps1; .\start.ps1
+```
+
+Was die Zeile macht: Sie lädt das Start-Script herunter und startet es. Der Rest ist Zuschauen, Enter drücken und an drei Stellen selbst etwas tun (Hetzner-Bestellung, Coolify-Account, die zwei Klicks im Dashboard). Was in jeder Phase passiert, steht in [Abschnitt 7](#7-was-das-script-macht--schritt-für-schritt-erklärt).
+
+### Wenn etwas hängt
+
+- **Abgebrochen, Netz weg, Laptop zugeklappt:** Dieselbe Zeile nochmal. Das Script macht da weiter, wo es war.
+- **„Ich komme nicht auf den Server":** Meistens wurde beim Bestellen der SSH-Key nicht angehakt. Server bei Hetzner löschen, neu bestellen, diesmal anhaken. Kostet nichts extra.
+- **Der Server ist nach dem Neustart nicht erreichbar:** Bei Hetzner in der Serverliste schauen, ob er läuft. Dann das Script nochmal starten.
+- **„Ich bestätige NICHT":** Der Test von außen ist fehlgeschlagen. Das Script macht nichts kaputt, der Server nimmt die Änderung in 10 Minuten zurück. Danach das Script nochmal starten. Bleibt es dabei: Ausgabe in der Community posten.
+
+### Danach
+
+Auf dem Server nachschauen, was erledigt ist:
+
+```bash
+ssh coolify sudo /opt/coolify-shield/install.sh --status
+```
+
+Der Report liegt auf dem Server unter `/root/coolify-shield-report.html`. Anschauen geht so: `ssh coolify sudo cat /root/coolify-shield-report.html > report.html`, dann die Datei `report.html` auf deinem Laptop im Browser öffnen.
+
+### Wenn du alles rückgängig machen willst
+
+```bash
+ssh coolify sudo /opt/coolify-shield/install.sh --undo
+```
+
+Das entfernt die SSH-Sperre und die Firewall. Den Tunnel nur, wenn du es bestätigst. Updates, fail2ban, Coolify und deinen Benutzer lässt es in Ruhe, die tun niemandem weh.
+
+### Wenn du es lieber von Hand machst
+
+Du hast schon einen Server mit Coolify, oder du willst jeden Schritt selbst tippen? Dann brauchst du nur den Server-Teil. Der Weg ist länger, dafür siehst du alles.
+
+**Vorbereitung (einmalig, ca. 10 Minuten):**
 
 1. **SSH-Key erstellen und hinterlegen.** Schritt für Schritt in [Abschnitt 6.4 bis 6.6](#64-einen-ssh-key-erzeugen), im Kurs in Modul 3. **Teste, dass der Login mit Key funktioniert, bevor du weitermachst.**
 2. **Rescue-Konsole finden.** Bei deinem Hoster einloggen, die Konsole (siehe [NOTFALL.md](NOTFALL.md)) einmal öffnen, einmal einloggen. Tab offen lassen.
 3. **Per SSH auf den Server.** In deinem Terminal auf dem Laptop, **nicht** im Coolify-Web-Terminal.
 
-### Das Script holen
+**Das Script holen** (auf dem Server):
 
 ```bash
 git clone https://github.com/oliverhees/coolify-shield.git
@@ -625,7 +737,7 @@ cd coolify-shield
 
 Damit liegt das Script jetzt auf deinem Server. Mehr passiert in diesem Schritt nicht.
 
-### Trockenlauf — nur schauen
+**Trockenlauf, nur schauen:**
 
 ```bash
 sudo ./install.sh
@@ -633,17 +745,15 @@ sudo ./install.sh
 
 `sudo` heißt „mach das als Chef". Ohne weitere Angabe macht das Script einen **Trockenlauf**: Es zeigt dir alles, was es tun *würde*, tut aber **nichts.** Jede Zeile, die mit `[trocken]` beginnt, ist ein Befehl, der nur angezeigt wurde. Lies die Ausgabe. Wenn etwas komisch aussieht: Frag in der Community, bevor du weitermachst.
 
-### Wirklich ausführen
+**Wirklich ausführen:**
 
 ```bash
 sudo ./install.sh --apply
 ```
 
-Jetzt passiert es. Das Script stellt dir Fragen. **Die sicherste Antwort ist immer der Vorschlag in eckigen Klammern** — wenn du unsicher bist, drück einfach Enter. Vor jedem riskanten Schritt fragt es dich noch mal.
+Jetzt passiert es. Das Script stellt dir Fragen. **Die sicherste Antwort ist immer der Vorschlag in eckigen Klammern** — wenn du unsicher bist, drück einfach Enter. Vor jedem riskanten Schritt fragt es dich noch mal. Die Reihenfolge auf diesem Weg: Grundschutz, WireGuard, SSH, Firewall. Coolify-Account und eigener Benutzer werden hier nicht angelegt, das hast du ja schon.
 
-### Der Moment mit dem Timer
-
-Wenn das Script sagt:
+**Der Moment mit dem Timer.** Auf diesem Weg gibt es kein Laptop-Script, das für dich testet. Das machst du selbst. Wenn das Script sagt:
 
 ```
 ⏱  Watchdog scharf. In 10 Minuten wird "ssh" automatisch zurückgerollt.
@@ -653,23 +763,13 @@ Wenn das Script sagt:
 dann:
 
 1. **Neues** Terminal-Fenster auf deinem Laptop öffnen
-2. Neu per SSH verbinden (bei der VPN-Phase: vorher den Tunnel auf dem Handy oder Laptop einschalten)
+2. Neu per SSH verbinden
 3. Klappt es → zurück ins erste Fenster, `sudo ./install.sh --confirm`
 4. Klappt es nicht → **nichts tun**, 10 Minuten warten, dann nochmal versuchen
 
-### Danach
+Bei der Firewall zusätzlich: Im Browser `http://<deine-ip>:8000` aufrufen. Lädt die Seite **nicht** mehr, ist alles richtig. Dann den Tunnel einschalten (die Laptop-Datei liegt unter `/var/lib/coolify-shield/wireguard/laptop.conf`, den Handy-QR zeigt `sudo qrencode -t ansiutf8 < /var/lib/coolify-shield/wireguard/handy.conf`) und `http://10.8.0.1:8000` aufrufen. Lädt sie, dann `--confirm`.
 
-```bash
-sudo ./install.sh --status
-```
-
-zeigt dir, was erledigt ist. Der Report liegt unter `/root/coolify-shield-report.html`. Und dann: die drei Klicks aus Abschnitt 8.
-
-### Wenn du alles rückgängig machen willst
-
-```bash
-sudo ./install.sh --undo
-```
+**Danach:** `sudo ./install.sh --status` zeigt, was erledigt ist. Und dann: die Klicks aus Abschnitt 9.
 
 ---
 
@@ -680,7 +780,7 @@ Ein paar Dinge ändern sich in deinem Alltag:
 - **Ins Coolify-Dashboard kommst du nur noch durch den VPN-Tunnel.** Handy oder Laptop: WireGuard einschalten, dann die Dashboard-Adresse aufrufen. Ohne Tunnel: Seite lädt nicht. Das ist gewollt — das ist der Schutz.
 - **SSH nur noch mit Key.** Wenn du einen neuen Laptop hast, brauchst du den Key dort. Passwort funktioniert nicht mehr.
 - **Nach einem Coolify-Update das Script nochmal laufen lassen.** Coolify kann bei Updates ein paar Einstellungen überschreiben. Das Script erkennt, was noch passt, und repariert nur, was fehlt. Es macht nichts doppelt.
-- **Zweites Gerät für den Tunnel anlegen.** In der wg-easy-Oberfläche kannst du weitere Zugänge anlegen (Laptop, zweites Handy). Zwei Geräte sind besser als eins — falls eins wegkommt.
+- **Beide Tunnel-Zugänge benutzen.** Das Script hat zwei angelegt: Laptop und Handy. Richte beide ein, auch wenn du das Handy selten brauchst. Zwei Geräte sind besser als eins — falls eins wegkommt. Den Handy-QR-Code kannst du jederzeit wieder anzeigen: `sudo qrencode -t ansiutf8 < /var/lib/coolify-shield/wireguard/handy.conf`. Ein drittes Gerät geht auch, ist aber Handarbeit in `/etc/wireguard/wg0.conf` (frag in der Community).
 
 ---
 
@@ -710,11 +810,20 @@ flowchart TD
 **Muss ich wirklich ein VPN? Reicht nicht 2FA?**
 2FA schützt den Login. Das VPN versteckt ihn. Beides zusammen ist richtig gut. Nur 2FA ist okay, aber deine Login-Seite hängt weiter offen im Netz, und jede Software hat irgendwann eine Lücke. Wenn die Seite nicht erreichbar ist, kann die Lücke nicht ausgenutzt werden.
 
+**Was ist WireGuard und wo läuft das?**
+WireGuard ist das VPN-Programm, mit dem der Tunnel gebaut wird. Es läuft **auf deinem Server**, direkt im Linux-Kern. Kein Anbieter, kein Konto, keine Firma dazwischen. Das Script erzeugt zwei Zugangsdateien: eine fürs Handy (die scannst du als QR-Code mit der WireGuard-App) und eine für den Laptop (die richtet das Start-Script für dich ein). Tunnel an, Dashboard-Adresse `http://10.8.0.1:8000` aufrufen, fertig. Ohne Tunnel ist die Adresse nicht erreichbar, so soll es sein. Und ja, das war früher mal mit einer Weboberfläche (wg-easy) geplant. Die ist rausgeflogen, weil sie ein zweites Login wäre, das man wieder absichern müsste.
+
+**Warum bekommt mein Benutzer kein Passwort?**
+Weil er keins braucht. Login geht nur mit deinem Schlüssel, und `sudo` fragt nicht nach einem Passwort. Ein Passwort, das du nie tippst, würdest du nur vergessen, und dann stündest du irgendwann vor einem `sudo`, das eins will. Das ist nicht unsicherer: Wer deinen Schlüssel nicht hat, kommt gar nicht erst bis zum `sudo`. Was du dafür gut aufheben musst: den Schlüssel selbst (liegt unter `~/.ssh/coolify-shield/`) und, falls du eine gesetzt hast, seine Passphrase.
+
+**Was passiert beim Neustart mitten im Script?**
+Nichts Schlimmes. Wenn ein Update einen neuen Linux-Kern bringt, setzt der Server ein Merkzeichen („Neustart nötig") und beendet sich mit einem bestimmten Code. Das Laptop-Script sieht das, startet den Server neu, wartet, bis er wieder antwortet (bis zu fünf Minuten), und ruft den Server-Teil nochmal auf. Der sieht anhand seiner Merkzeichen, dass die Updates schon erledigt sind, und macht bei Coolify weiter. Du siehst nur „Der Server startet neu. Das dauert etwa eine Minute." und ein paar Punkte, bis er wieder da ist.
+
 **Kann ich das Script mehrmals laufen lassen?**
-Ja, beliebig oft. Was erledigt ist, wird übersprungen.
+Ja, beliebig oft. Was erledigt ist, wird übersprungen. Das gilt für das Laptop-Script und für den Server-Teil. Die Tunnel-Schlüssel werden dabei nie neu erzeugt, sonst wären Handy und Laptop draußen.
 
 **Was ist, wenn ich Windows habe?**
-Das Script läuft auf dem *Server* (Linux). Dein Laptop ist egal. Für SSH auf Windows: Windows Terminal oder PowerShell, beides hat SSH eingebaut.
+Für Windows gibt es `start.ps1`, das Gegenstück zu `start.sh`. PowerShell öffnen, die Zeile aus [Abschnitt 10](#10-der-komplette-ablauf--was-du-wann-tippst) einfügen, Enter. SSH ist seit Windows 10 eingebaut. Für den Tunnel brauchst du „WireGuard für Windows" von wireguard.com. Der Server-Teil läuft sowieso auf Linux, dein Laptop ist dem egal.
 
 **Das Script sagt „Das sieht nach dem Coolify-Web-Terminal aus".**
 Du bist im Coolify-Web-Terminal. Das geht nicht (Abschnitt 5, „Terminal"). Öffne ein Terminal auf deinem Laptop und verbinde dich per SSH.
@@ -740,7 +849,7 @@ In der [AIIANER-Community](https://aiianer.de). Schick die Datei `/var/log/cooli
 | **authorized_keys** | Die Liste auf dem Server, in der die erlaubten öffentlichen Schlüssel stehen — eine Zeile pro Schlüssel |
 | **Bot** | Automatisches Programm, das ohne Menschen im Internet Adressen abklopft und Passwörter probiert |
 | **Brute Force** | „Rohe Gewalt": Passwörter so lange durchprobieren, bis eins passt |
-| **Container** | Abgeschlossene „Kiste" für ein Programm (Docker). Coolify, deine Apps und das VPN laufen je in einem |
+| **Container** | Abgeschlossene „Kiste" für ein Programm (Docker). Coolify und deine Apps laufen je in einem |
 | **CrowdSec / fail2ban** | Programme, die Brute-Force-Versuche erkennen und den Angreifer sperren |
 | **Dashboard** | Die Weboberfläche von Coolify |
 | **DSGVO** | Datenschutz-Grundverordnung — das EU-Datenschutzgesetz. Relevant, sobald du Daten anderer Menschen verarbeitest |
@@ -764,8 +873,8 @@ In der [AIIANER-Community](https://aiianer.de). Schick die Datei `/var/log/cooli
 | **Traefik** | Der „Verteiler" in Coolify, der eingehende Web-Anfragen an die richtige App weiterreicht |
 | **Trockenlauf (Dry-Run)** | Zeigt, was passieren würde, tut aber nichts |
 | **Tunnel / VPN** | Verschlüsselte Privatverbindung zwischen deinem Gerät und dem Server |
-| **wg-easy** | Einfache Oberfläche für WireGuard, läuft auf deinem Server |
-| **WireGuard** | Das VPN-Programm, das coolify-shield einrichtet |
+| **WireGuard** | Das VPN-Programm, das coolify-shield einrichtet. Läuft direkt auf deinem Server, ohne Anbieter und ohne Weboberfläche |
+| **wg0** | Der Name der Tunnel-Schnittstelle auf dem Server. Im Tunnel hat der Server die Adresse `10.8.0.1` |
 | **2FA** | Zwei-Faktor-Authentifizierung: Passwort plus Code vom Handy |
 
 ---
