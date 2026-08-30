@@ -2,7 +2,7 @@
 
 > Du hast noch nie einen Server verwaltet, weißt nicht genau, was „SSH" oder „Firewall" bedeutet, und willst trotzdem Coolify, weil du deine eigenen Apps oder KI-Tools hosten willst? Oder du hast Coolify schon installiert und ein ungutes Gefühl dabei? **Dann ist diese Seite für dich.** Hier wird nichts vorausgesetzt. Alles wird einmal von Null erklärt: warum du das überhaupt brauchst, was das Script macht und wie es funktioniert.
 >
-> Im Kurs gibt es dazu ein Video. Diese Seite ist die Version zum Nachlesen — du kannst sie neben dem Terminal offen lassen.
+> In der AIIANER-Community gibt es dazu ein Video. Diese Seite ist die Version zum Nachlesen — du kannst sie neben dem Terminal offen lassen.
 
 ---
 
@@ -111,7 +111,7 @@ Deine Größe ist egal. Du bist nicht das Ziel — du bist **eine von Millionen 
 
 ## 5. Die Begriffe, die du brauchst
 
-Du wirst im Script und im Kurs immer wieder auf ein paar Fachwörter stoßen. Hier sind sie einmal erklärt — nicht technisch korrekt bis ins Letzte, sondern so, dass du weißt, was gemeint ist.
+Du wirst im Script und im Video immer wieder auf ein paar Fachwörter stoßen. Hier sind sie einmal erklärt — nicht technisch korrekt bis ins Letzte, sondern so, dass du weißt, was gemeint ist.
 
 ### SSH — deine Fernbedienung für den Server
 
@@ -725,7 +725,7 @@ Du hast schon einen Server mit Coolify, oder du willst jeden Schritt selbst tipp
 
 **Vorbereitung (einmalig, ca. 10 Minuten):**
 
-1. **SSH-Key erstellen und hinterlegen.** Schritt für Schritt in [Abschnitt 6.4 bis 6.6](#64-einen-ssh-key-erzeugen), im Kurs in Modul 3. **Teste, dass der Login mit Key funktioniert, bevor du weitermachst.**
+1. **SSH-Key erstellen und hinterlegen.** Schritt für Schritt in [Abschnitt 6.4 bis 6.6](#64-einen-ssh-key-erzeugen). **Teste, dass der Login mit Key funktioniert, bevor du weitermachst.**
 2. **Rescue-Konsole finden.** Bei deinem Hoster einloggen, die Konsole (siehe [NOTFALL.md](NOTFALL.md)) einmal öffnen, einmal einloggen. Tab offen lassen.
 3. **Per SSH auf den Server.** In deinem Terminal auf dem Laptop, **nicht** im Coolify-Web-Terminal.
 
@@ -833,7 +833,7 @@ Du bist im Coolify-Web-Terminal. Das geht nicht (Abschnitt 5, „Terminal"). Öf
 Kommt selten vor (z. B. in manchen Container- oder Hoster-Konsolen). Wenn du sicher bist, dass du per SSH von deinem Laptop verbunden bist: `sudo ./install.sh --force`.
 
 **Das Script sagt „Kein SSH-Key gefunden".**
-Dann wird die SSH-Phase übersprungen, alles andere läuft. Richte einen Key ein (Kurs Modul 3) und lass das Script danach nochmal laufen.
+Dann wird die SSH-Phase übersprungen, alles andere läuft. Richte einen Key ein (Abschnitt 6.4 bis 6.6) und lass das Script danach nochmal laufen.
 
 **Was ist mit meinen Apps, die auf dem Server laufen — gehen die kaputt?**
 Nein. Die Ports 80 und 443, über die deine Apps erreichbar sind, bleiben offen. Nur die Verwaltungs-Türen werden geschlossen.

@@ -46,7 +46,7 @@
 - [Ich habe mich ausgesperrt](#-ich-habe-mich-ausgesperrt)
 - [Status](#-status)
 - [Roadmap](#️-roadmap)
-- [Der Kurs dazu](#-der-kurs-dazu)
+- [Das Video dazu](#-das-video-dazu)
 - [Mitmachen](#-mitmachen)
 - [Das AIIANER-Universum](#-das-aiianer-universum)
 - [Lizenz](#-lizenz)
@@ -482,11 +482,9 @@ Voraussetzung: systemd (für den Watchdog) — ohne systemd Fallback auf das Pak
 5. **Drittes Gerät** ohne Handarbeit: `--add-peer <name>` erzeugt eine weitere Client-Datei.
 6. **CrowdSec** als Option in `20-basics.sh`.
 
-## 🎓 Der Kurs dazu
+## 🎓 Das Video dazu
 
-Das Script ist öffentlich und bleibt es. Es härtet deinen Server — der Kurs in der [AIIANER-Community](https://aiianer.de) erklärt das **Warum**, plus VPN-Setup Schritt für Schritt, Multi-Server, Backups und Incident-Response. Script und Video laufen im Gleichschritt: nach jeder Phase sagt dir das Script, an welcher Stelle im Kurs es weitergeht.
-
-Wer keinen Kurs braucht, braucht ihn nicht. Der Code ist vollständig hier.
+Das Script ist öffentlich und bleibt es. Das Video dazu, in dem Oliver den ganzen Weg einmal live durchgeht, gibt es in der [AIIANER-Community](https://aiianer.de). Wer kein Video braucht, braucht es nicht. Der Code ist vollständig hier.
 
 ## 🤝 Mitmachen
 
