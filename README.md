@@ -345,7 +345,7 @@ flowchart TD
 | Phase | Modul | Was passiert | Rückfall-Timer | Was du tun musst |
 | --- | --- | --- | --- | --- |
 | **Laptop 1 · Schlüssel** | `start.sh` / `start.ps1` | ed25519-Schlüssel unter `~/.ssh/coolify-shield/<name>`, Block in `~/.ssh/config` (`IdentitiesOnly yes`), öffentlicher Teil in die Zwischenablage | nein | Servernamen wählen, optional Passphrase |
-| **Laptop 2 · Hetzner** | `start.sh` / `start.ps1` | zeigt die Bestell-Anleitung (Ubuntu 24.04, 4 GB, Schlüssel anhaken, Hetzner-Firewall mit ICMP, TCP 22/80/443 und UDP 51820, kein 8000, Rescue-Konsole öffnen) | nein | bestellen, IP eintragen |
+| **Laptop 2 · Hetzner** | `start.sh` / `start.ps1` | zeigt die Bestell-Anleitung in dieser Reihenfolge: Schlüssel hinterlegen, Firewall anlegen (ICMP, TCP 22/80/443, UDP 51820, kein 8000), Server bestellen (Ubuntu 24.04, 4 GB, Schlüssel anhaken, Firewall auswählen), Rescue-Konsole öffnen | nein | bestellen, IP eintragen |
 | **Laptop 3 · Login** | `start.sh` / `start.ps1` | wartet bis SSH antwortet, lädt das Repo als Tarball nach `/opt/coolify-shield`, startet `install.sh --setup` | nein | nichts |
 | **0 · Preflight** | `00-preflight.sh` | prüft Root, Distro, Watchdog-Fähigkeit, Sitzungsart, Internet, Platz. Ändert nichts | nein | bestätigen, dass die Rescue-Konsole offen ist |
 | **1 · Updates** | `05-updates.sh` | `apt upgrade`, Grundpakete (ufw, fail2ban, wireguard-tools, qrencode), Zeitzone Europe/Berlin, 2 GB Swap. Braucht der Kernel einen Neustart, endet das Script mit Code 75, der Laptop startet den Server neu und macht weiter | nein | nichts, bei Neustart etwa eine Minute warten |

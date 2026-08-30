@@ -297,24 +297,32 @@ else
   So geht es bei Hetzner (Cloud Console: https://console.hetzner.cloud):
 
    1. Konto anlegen oder einloggen, ein Projekt oeffnen (oder "Neues Projekt")
-   2. Links "Security" → Reiter "SSH Keys" → "SSH-Key hinzufuegen"
+
+   2. Schluessel hinterlegen:
+      Links "Security" → Reiter "SSH Keys" → "SSH-Key hinzufuegen"
       Schluessel von oben einfuegen, Name z. B. "$NAME", speichern
-   3. "Server" → "Server hinzufuegen":
+
+   3. Firewall anlegen (JETZT, vor der Bestellung):
+      Links "Firewalls" → "Firewall erstellen". Eingehende Regeln, Quelle jeweils
+      "Any IPv4, Any IPv6":
+         ICMP                  (Ping)
+         TCP  22               (SSH)
+         TCP  80               (Web)
+         TCP  443              (Web, verschluesselt)
+         UDP  51820            (dein VPN-Tunnel, WICHTIG, sonst kommst du nie ans Dashboard)
+      KEIN Port 8000: das Dashboard soll nur durch den Tunnel erreichbar sein.
+      Name z. B. "$NAME-firewall", "Firewall erstellen".
+
+   4. Server bestellen: "Server" → "Server hinzufuegen":
         Standort:  egal, z. B. Nuernberg oder Helsinki
         Image:     Ubuntu 24.04
         Typ:       Shared vCPU, mindestens 4 GB RAM
         SSH-Key:   deinen Schluessel "$NAME" ANHAKEN (wichtig, sonst kommst du nicht rein)
-        Firewall:  "Firewall erstellen" (oder eine bestehende waehlen) mit GENAU diesen
-                   eingehenden Regeln, alles mit Quelle "Any IPv4, Any IPv6":
-                     ICMP          (Ping)
-                     TCP 22        (SSH)
-                     TCP 80        (Web)
-                     TCP 443       (Web, verschluesselt)
-                     UDP 51820     (dein VPN-Tunnel, WICHTIG, sonst kommst du nie ans Dashboard)
-                   KEIN Port 8000: das Dashboard soll nur durch den Tunnel erreichbar sein.
+        Firewall:  "$NAME-firewall" AUSWAEHLEN
         Name:      $NAME
       "Kostenpflichtig bestellen". Nach etwa einer Minute steht die IP-Adresse da.
-   4. Einmal die Rescue-Konsole oeffnen: Server anklicken → oben rechts das
+
+   5. Einmal die Rescue-Konsole oeffnen: Server anklicken → oben rechts das
       Bildschirm-Symbol ("Console"). Das ist dein Notausgang, falls spaeter mal
       etwas klemmt. Tab offen lassen.
 

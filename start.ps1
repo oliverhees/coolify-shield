@@ -446,8 +446,8 @@ function Setup-Tunnel {
             Show-Say '  Der Server sieht deinen Laptop, aber das Dashboard antwortet nicht. Kurz warten, dann Enter.'
         } else {
             Show-Say '  Der Server hat von deinem Laptop noch NIE ein Tunnel-Paket bekommen (UDP 51820).'
-            Show-Say '  Haeufigste Ursache: eine Hetzner Cloud Firewall am Server. In der Hetzner Console:'
-            Show-Say '  Server -> Reiter Firewalls -> Firewall entfernen ODER Regel "Eingehend UDP 51820, Any" ergaenzen.'
+            Show-Say '  Haeufigste Ursache: In der Hetzner-Firewall fehlt die Regel fuer den Tunnel. In der Hetzner Console:'
+            Show-Say '  Server -> Reiter Firewalls -> Regel ergaenzen: Eingehend, UDP, Port 51820, Quelle Any IPv4 + Any IPv6.'
             Show-Say '  Zweite Moeglichkeit: Tunnel auf dem Laptop nicht an (WireGuard-App, Aktivieren).'
         }
         Show-Say '  Wenn erledigt: Enter, ich teste nochmal.'
@@ -587,13 +587,22 @@ if ((Get-State 'ip') -ne '' -and (Test-SshLogin)) {
         Image:     Ubuntu 24.04
         Typ:       Shared vCPU, mindestens 4 GB RAM
         SSH-Key:   deinen Schluessel "$Name" ANHAKEN (wichtig, sonst kommst du nicht rein)
-        Firewall:  KEINE auswaehlen. (Die Firewall baut das Script selbst. Eine Hetzner-
-                   Firewall wuerde den VPN-Tunnel blockieren, UDP 51820.)
+        Firewall:  "Firewall erstellen" (oder eine bestehende waehlen) mit GENAU diesen
+                   eingehenden Regeln, alles mit Quelle "Any IPv4, Any IPv6":
+                     ICMP          (Ping)
+                     TCP 22        (SSH)
+                     TCP 80        (Web)
+                     TCP 443       (Web, verschluesselt)
+                     UDP 51820     (dein VPN-Tunnel, WICHTIG, sonst kommst du nie ans Dashboard)
+                   KEIN Port 8000: das Dashboard soll nur durch den Tunnel erreichbar sein.
         Name:      $Name
       "Kostenpflichtig bestellen". Nach etwa einer Minute steht die IP-Adresse da.
    4. Einmal die Rescue-Konsole oeffnen: Server anklicken -> oben rechts das
       Bildschirm-Symbol ("Console"). Das ist dein Notausgang, falls spaeter mal
       etwas klemmt. Tab offen lassen.
+
+  Die Hetzner-Firewall ist der aeussere Guertel. Den inneren (auf dem Server) baut
+  das Script selbst. Beide zusammen: doppelt haelt besser.
 "@
     Write-Host $anleitung
     Write-Host ''

@@ -473,7 +473,7 @@ flowchart TD
 
 ### Laptop 2 · Server bestellen (Hetzner)
 
-**Was passiert:** Das Script zeigt dir deinen öffentlichen Schlüssel und eine Anleitung: Hetzner-Konto, Schlüssel hinterlegen, Server mit Ubuntu 24.04 und mindestens 4 GB RAM bestellen, dabei deinen Schlüssel **anhaken**, eine Hetzner-Firewall mit genau fünf Regeln anlegen (ICMP, TCP 22, TCP 80, TCP 443, UDP 51820 für den Tunnel, kein Port 8000), und einmal die Rescue-Konsole öffnen. Das Script bestellt nichts für dich und braucht keinen Zugang zu deinem Hetzner-Konto. Du klickst, es wartet. Wenn der Server steht, tippst du seine IP-Adresse ein.
+**Was passiert:** Das Script zeigt dir deinen öffentlichen Schlüssel und eine Anleitung: Hetzner-Konto, Schlüssel hinterlegen, zuerst eine Hetzner-Firewall mit genau fünf Regeln anlegen (ICMP, TCP 22, TCP 80, TCP 443, UDP 51820 für den Tunnel, kein Port 8000), dann den Server mit Ubuntu 24.04 und mindestens 4 GB RAM bestellen, dabei deinen Schlüssel **anhaken** und die Firewall **auswählen**, und einmal die Rescue-Konsole öffnen. Das Script bestellt nichts für dich und braucht keinen Zugang zu deinem Hetzner-Konto. Du klickst, es wartet. Wenn der Server steht, tippst du seine IP-Adresse ein.
 
 **Warum von Hand:** Du sollst sehen, wo dein Server liegt und was er kostet, und du sollst wissen, wo der Notausgang ist. Das kann kein Script für dich wissen.
 
