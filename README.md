@@ -116,10 +116,9 @@ flowchart TB
 > **Anfänger?** Lies zuerst [ANFAENGER.md](ANFAENGER.md) — dort wird jeder Schritt und jeder Begriff von Null erklärt.
 
 ```bash
-# 1. Holen — und lesen. Es läuft als root.
+# 1. Holen
 git clone https://github.com/oliverhees/coolify-shield.git
 cd coolify-shield
-less install.sh
 
 # 2. Rescue-Konsole deines Hosters in einem Browser-Tab öffnen (siehe NOTFALL.md)
 
@@ -133,8 +132,6 @@ sudo ./install.sh --apply
 sudo ./install.sh --confirm
 #    Klappt es nicht: nichts tun. Nach 10 Minuten rollt es sich selbst zurück.
 ```
-
-> **Kein `curl | bash`.** Bei einem Sicherheitswerkzeug, das als root läuft, wäre das das falsche Signal. Lies es erst, dann führ es aus. Deshalb ist der Code öffentlich.
 
 > **Nicht im Coolify-Web-Terminal ausführen.** Per SSH auf den Server. Das Preflight-Gate bricht sonst ab — mit Absicht, denn Firewall-Änderungen würden deine eigene Sitzung kappen.
 

@@ -616,15 +616,14 @@ Hier der ganze Weg, von Anfang bis Ende. Alle Befehle werden **auf dem Server** 
 2. **Rescue-Konsole finden.** Bei deinem Hoster einloggen, die Konsole (siehe [NOTFALL.md](NOTFALL.md)) einmal öffnen, einmal einloggen. Tab offen lassen.
 3. **Per SSH auf den Server.** In deinem Terminal auf dem Laptop, **nicht** im Coolify-Web-Terminal.
 
-### Das Script holen und lesen
+### Das Script holen
 
 ```bash
 git clone https://github.com/oliverhees/coolify-shield.git
 cd coolify-shield
-less install.sh
 ```
 
-`less` zeigt dir die Datei an. Mit den Pfeiltasten scrollen, mit `q` beenden. Du musst nicht alles verstehen — aber du sollst sehen, dass es normale Befehle sind und kein Zauber. **Ein Script, das als Chef auf deinem Server läuft, führst du nie blind aus.**
+Damit liegt das Script jetzt auf deinem Server. Mehr passiert in diesem Schritt nicht.
 
 ### Trockenlauf — nur schauen
 
@@ -716,9 +715,6 @@ Ja, beliebig oft. Was erledigt ist, wird übersprungen.
 
 **Was ist, wenn ich Windows habe?**
 Das Script läuft auf dem *Server* (Linux). Dein Laptop ist egal. Für SSH auf Windows: Windows Terminal oder PowerShell, beides hat SSH eingebaut.
-
-**Warum kein `curl | bash`, wie bei anderen Tools?**
-Weil das „führe aus, ohne hinzusehen" bedeutet. Bei einem Tool, das als Chef auf deinem Server läuft, ist das genau die falsche Gewohnheit. Erst holen, dann lesen, dann ausführen.
 
 **Das Script sagt „Du sitzt nicht in einer SSH-Sitzung".**
 Du bist im Coolify-Web-Terminal. Das geht nicht (Abschnitt 5, „Terminal"). Öffne ein Terminal auf deinem Laptop und verbinde dich per SSH.
