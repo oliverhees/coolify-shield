@@ -319,6 +319,127 @@ function Invoke-ServerSetup {
     return $LASTEXITCODE
 }
 
+# ---------------------------------------------------------------------------
+# Schritt 5 · WireGuard auf dem Laptop (wird aufgerufen, sobald der Server
+# die Firewall scharf hat; danach geht es auf dem Server weiter)
+#
+# Gibt $true zurueck, wenn das Dashboard durch den Tunnel antwortet.
+# Achtung: In einer Funktion wird ALLES zum Rueckgabewert, was auf stdout
+# landet. Ausgaben fremder Programme gehen deshalb ueber Out-Host, und
+# jeder Invoke-Quiet-Aufruf wird zugewiesen.
+# ---------------------------------------------------------------------------
+function Setup-Tunnel {
+    Show-Step 'Schritt 5 · Dein Tunnel'
+    Show-Say '  Der Server ist jetzt dicht. Das Dashboard erreichst du nur noch durch den Tunnel.'
+    Show-Say '  Ich richte WireGuard auf diesem Rechner ein und schalte den Tunnel ein.'
+    Write-Host ''
+
+    $wgConfPfad = Join-Path $StateHome ($Name + '-laptop.conf')
+    $wgConfOk = $false
+    if ($S_WgConf -ne '') {
+        $wg = Invoke-Quiet 'ssh.exe' @('-o', 'BatchMode=yes', $Name, ('sudo cat ' + $S_WgConf))
+        $inhalt = (@($wg.Out) -join "`n")
+        if ($wg.Code -eq 0 -and $inhalt -match '\[Interface\]') {
+            Write-TextFileNoBom -Path $wgConfPfad -Text ($inhalt.TrimEnd() + "`n")
+            $wgConfOk = $true
+            Show-Ok ('Tunnel-Datei geholt: ' + $wgConfPfad)
+        } else {
+            Show-Warn 'Tunnel-Datei konnte nicht geholt werden'
+        }
+    } elseif (Test-Path -LiteralPath $wgConfPfad) {
+        # Aus einem frueheren Lauf. Besser als gar keine.
+        $wgConfOk = $true
+        Show-Skip ('Tunnel-Datei von vorhin genommen: ' + $wgConfPfad)
+    } else {
+        Show-Warn 'Der Server hat keine Tunnel-Datei gemeldet'
+    }
+
+    $script:WgIp = $S_WgIp
+    if ($script:WgIp -eq '') { $script:WgIp = '10.8.0.1' }
+    $dashboard = 'http://' + $script:WgIp + ':8000'
+
+    # WireGuard installieren, falls noetig
+    if (Test-Path -LiteralPath $WgExe) {
+        Show-Ok 'WireGuard ist installiert'
+    } else {
+        if (Get-Command 'winget' -ErrorAction SilentlyContinue) {
+            Show-Say '  Ich installiere WireGuard ueber winget. Das dauert einen Moment.'
+            & winget install --id WireGuard.WireGuard -e --accept-package-agreements --accept-source-agreements | Out-Host
+            if (Test-Path -LiteralPath $WgExe) {
+                Show-Ok 'WireGuard installiert'
+            } else {
+                Show-Warn 'winget hat WireGuard nicht an der erwarteten Stelle installiert.'
+            }
+        } else {
+            Show-Warn 'winget gibt es auf diesem Rechner nicht.'
+        }
+        if (-not (Test-Path -LiteralPath $WgExe)) {
+            Show-Say '  Bitte WireGuard von Hand installieren: https://www.wireguard.com/install/'
+            Show-Say '  Danach hier weiter.'
+            Wait-Enter
+        }
+    }
+
+    # Tunnel importieren. Das braucht Administrator-Rechte.
+    $tunnelAn = $false
+    if ($wgConfOk -and (Test-Path -LiteralPath $WgExe)) {
+        $identitaet = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $prinzipal  = New-Object Security.Principal.WindowsPrincipal($identitaet)
+        $istAdmin   = $prinzipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+        if ($istAdmin) {
+            & $WgExe '/installtunnelservice' $wgConfPfad | Out-Host
+            if ($LASTEXITCODE -eq 0) { $tunnelAn = $true }
+        } else {
+            Show-Say '  Fuer den Tunnel braucht Windows einmal Administrator-Rechte.'
+            Show-Say '  Es kommt gleich ein Fenster mit der Frage "Zulassen?". Bitte auf Ja klicken.'
+            # -Verb RunAs braucht -ArgumentList. Der Pfad kann Leerzeichen enthalten,
+            # deshalb wird er hier selbst in Anfuehrungszeichen gesetzt.
+            $argumente = @('/installtunnelservice', ('"' + $wgConfPfad + '"'))
+            $proc = Start-Process -FilePath $WgExe -ArgumentList $argumente -Verb RunAs -Wait -PassThru
+            if ($null -ne $proc -and $proc.ExitCode -eq 0) { $tunnelAn = $true }
+        }
+
+        if ($tunnelAn) {
+            Show-Ok ('Tunnel eingerichtet und eingeschaltet (' + $Name + '-laptop)')
+        } else {
+            Show-Warn 'Der Tunnel liess sich nicht automatisch einschalten.'
+            Show-Say  '  So geht es von Hand: WireGuard oeffnen, dann "Tunnel importieren",'
+            Show-Say  ('  dann diese Datei waehlen: ' + $wgConfPfad)
+            Show-Say  '  Danach auf "Aktivieren" klicken.'
+            Wait-Enter
+        }
+    } elseif (-not $wgConfOk) {
+        Show-Warn 'Ohne Tunnel-Datei kann ich den Tunnel nicht einrichten.'
+        Show-Say  '  Starte start.ps1 spaeter noch einmal, dann hole ich sie erneut vom Server.'
+    } else {
+        # Datei ist da, WireGuard fehlt. Der Weg von Hand bleibt offen.
+        Show-Warn 'WireGuard ist nicht installiert, deshalb kann ich den Tunnel nicht einschalten.'
+        Show-Say  '  So geht es, sobald WireGuard da ist: WireGuard oeffnen, dann "Tunnel importieren",'
+        Show-Say  ('  dann diese Datei waehlen: ' + $wgConfPfad)
+        Show-Say  '  Danach auf "Aktivieren" klicken.'
+    }
+
+    $test = Invoke-Quiet 'curl.exe' @('-s', '--max-time', '6', '-o', 'NUL', $dashboard)
+    if ($test.Code -eq 0) {
+        Show-Ok ('Dashboard durch den Tunnel erreichbar: ' + $dashboard)
+    } else {
+        Show-Warn 'Dashboard antwortet nicht durch den Tunnel.'
+        Show-Say  '  Ist der Tunnel wirklich an? (WireGuard-App, Schalter an)'
+        Show-Say  '  Dann Enter, ich teste nochmal.'
+        Wait-Enter
+    }
+
+    $test2 = Invoke-Quiet 'curl.exe' @('-s', '--max-time', '6', '-o', 'NUL', $dashboard)
+    if ($test2.Code -eq 0) {
+        $melde = 'sudo bash -c ' + "'" + 'mkdir -p /var/lib/coolify-shield; echo ok > /var/lib/coolify-shield/tunnel.ok' + "'"
+        $null = Invoke-Quiet 'ssh.exe' @('-o', 'BatchMode=yes', $Name, $melde)
+        Set-State 'tunnel' 'ok'
+        return $true
+    }
+    return $false
+}
+
 # ===========================================================================
 # Wird ganz am Ende auf $true gesetzt. Alles andere gilt als Abbruch
 # (Strg+C, geschlossenes Fenster) und bekommt unten eine freundliche Meldung.
@@ -542,6 +663,14 @@ if ($r.Code -ne 0) {
 }
 Show-Ok ('Server-Teil liegt unter ' + $ServerDir)
 
+# Dem Server sagen, dass ein Laptop-Script die Regie fuehrt. Er uebergibt
+# dann an den passenden Stellen an uns zurueck (etwa mit phase=tunnel).
+$DriverBefehl = 'sudo bash -c ' + "'" +
+    'mkdir -p /var/lib/coolify-shield; ' +
+    'grep -q ^driver= /var/lib/coolify-shield/laptop.env 2>/dev/null || ' +
+    'echo driver=laptop >> /var/lib/coolify-shield/laptop.env' + "'"
+$null = Invoke-Quiet 'ssh.exe' @('-o', 'BatchMode=yes', $Name, $DriverBefehl)
+
 $Runde = 0
 while ($true) {
     $Runde = $Runde + 1
@@ -657,12 +786,38 @@ while ($true) {
         continue
     }
 
+    # Der Server hat die Firewall scharf und wartet darauf, dass der Tunnel
+    # auf diesem Rechner steht. Erst danach macht er mit Phase 9 weiter.
+    if ($S_Phase -eq 'tunnel') {
+        $TunnelVersuche = 0
+        while (-not (Setup-Tunnel)) {
+            $TunnelVersuche = $TunnelVersuche + 1
+            if ($TunnelVersuche -ge 10) {
+                Show-Warn 'Ohne Tunnel kommst du nicht ans Dashboard. Spaeter: start.ps1 erneut.'
+                $Durchgelaufen = $true
+                exit 1
+            }
+            if (-not (Read-YesNo 'Tunnel nochmal versuchen?' 'j')) {
+                Show-Warn 'Ohne Tunnel kommst du nicht ans Dashboard. Spaeter: start.ps1 erneut.'
+                $Durchgelaufen = $true
+                exit 1
+            }
+        }
+        continue
+    }
+
     if ($S_Phase -eq 'done') { break }
 
     if ($rc -ne 0) {
         Show-Warn ('Der Server-Teil ist mit Fehler beendet (Code ' + $rc + '). Siehe Ausgabe oben.')
         if (-not (Read-YesNo 'Nochmal versuchen?' 'j')) { $Durchgelaufen = $true; exit 1 }
     }
+}
+
+# Falls der Server nie mit phase=tunnel uebergeben hat (aelterer Server-Teil,
+# oder der Tunnel stand schon), holen wir es hier nach.
+if ((Get-State 'tunnel') -ne 'ok') {
+    if (-not (Setup-Tunnel)) { Show-Warn 'Tunnel-Test nicht bestanden, siehe oben.' }
 }
 
 Show-NextUp 'Server ist eingerichtet und abgesichert' `
