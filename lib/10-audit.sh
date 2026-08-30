@@ -57,7 +57,9 @@ phase_audit() {
   for p in 8000 6001 6002; do
     ss -Hltn "sport = :$p" 2>/dev/null | grep -q '0\.0\.0\.0\|\[::\]' && offen="$offen $p"
   done
-  if [ -n "$offen" ]; then
+  if [ -n "$offen" ] && iptables -S DOCKER-USER 2>/dev/null | grep -q 'ctorigdstport 8000'; then
+    audit_add coolify_ports "Coolify-Ports" gruen "nur aus dem Tunnel erreichbar (Docker-Regel aktiv)" script
+  elif [ -n "$offen" ]; then
     audit_add coolify_ports "Coolify-Ports" rot "oeffentlich erreichbar:$offen" script
   else
     audit_add coolify_ports "Coolify-Ports" gruen "nicht oeffentlich gebunden" script
@@ -81,7 +83,9 @@ phase_audit() {
   fi
 
   # --- VPN ----------------------------------------------------------------
-  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qi 'wg-easy'; then
+  if wg show wg0 >/dev/null 2>&1; then
+    audit_add vpn "VPN-Zugang" gruen "WireGuard wg0 aktiv" script
+  elif docker ps --format '{{.Names}}' 2>/dev/null | grep -qi 'wg-easy'; then
     audit_add vpn "VPN-Zugang" gruen "wg-easy laeuft" script
   else
     audit_add vpn "VPN-Zugang" gelb "kein VPN – Dashboard haengt am offenen Netz" script

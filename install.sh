@@ -162,6 +162,24 @@ case "$MODUS" in
       phase_firewall
       if state_has "watchdog.firewall"; then laptop_env_set "phase" "firewall"; exit 0; fi
     fi
+    # Ab hier braucht der Nutzer den Tunnel auf dem Laptop (Dashboard ist von
+    # aussen zu). Laeuft das Laptop-Script, uebergeben wir an es; sonst Pause.
+    if ! state_has "tunnel.ok"; then
+      if [ "$(sed -n 's/^driver=//p' "$LAPTOP_ENV" 2>/dev/null)" = "laptop" ]; then
+        laptop_env_set "phase" "tunnel"
+        next_up "Server abgesichert, Dashboard nur noch aus dem Tunnel erreichbar" \
+                "Dein Laptop-Script richtet jetzt WireGuard auf dem Laptop ein und testet den Tunnel. Danach geht es hier weiter." \
+                "Nichts. Zuschauen."
+        exit 0
+      fi
+      step "Tunnel auf deinem Laptop"
+      say "  Das Dashboard ist ab jetzt nur noch durch den Tunnel erreichbar."
+      say "  Laptop-Config: $WG_DIR/laptop.conf (per scp holen, in WireGuard importieren, aktivieren)."
+      say "  Handy: QR-Code oben scannen und Tunnel einschalten."
+      printf '\n'
+      pause_enter
+      state_set "tunnel.ok" "manuell"
+    fi
     phase_audit
     phase_coolify_secure
     phase_report

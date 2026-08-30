@@ -157,6 +157,77 @@ run_server() {
   ssh -t -o ConnectTimeout=10 "$NAME" "${sudo_prefix}$SERVER_DIR/install.sh --setup"
 }
 
+# ---------------------------------------------------------------------------
+# Schritt 5 · WireGuard auf dem Laptop (wird aufgerufen, sobald der Server
+# die Firewall scharf hat; danach geht es auf dem Server weiter)
+# ---------------------------------------------------------------------------
+setup_tunnel() {
+  step "Schritt 5 · Dein Tunnel"
+  say "  Der Server ist jetzt dicht. Das Dashboard erreichst du nur noch durch den Tunnel."
+  say "  Ich richte WireGuard auf diesem Rechner ein und schalte den Tunnel ein."
+  printf '\n'
+WGCONF="$STATE_HOME/$NAME-laptop.conf"
+  if [ -n "$S_WGCONF" ]; then
+    ssh -o BatchMode=yes "$NAME" "sudo cat $S_WGCONF" > "$WGCONF" 2>/dev/null && chmod 600 "$WGCONF" \
+      && ok "Tunnel-Datei geholt: $WGCONF" || warn "Tunnel-Datei konnte nicht geholt werden"
+  fi
+  WGIP="${S_WGIP:-10.8.0.1}"
+  
+  case "$OS" in
+    mac)
+      if [ -d "/Applications/WireGuard.app" ]; then
+        ok "WireGuard-App ist installiert"
+      else
+        say "  Ich oeffne den App Store mit der WireGuard-App. Bitte installieren."
+        open "macappstore://apps.apple.com/app/wireguard/id1451685025" 2>/dev/null || say "  https://apps.apple.com/app/wireguard/id1451685025"
+        pause_enter
+      fi
+      open -a WireGuard 2>/dev/null || true
+      next_up "Tunnel-Datei liegt bereit" "Tunnel in der App importieren und einschalten." \
+        "In WireGuard: \"Tunnel aus Datei importieren\" → $WGCONF → dann \"Aktivieren\"."
+      pause_enter
+      ;;
+    linux)
+      if ! command -v wg >/dev/null 2>&1; then
+        say "  Ich installiere WireGuard (fragt nach deinem Passwort)."
+        if command -v apt-get >/dev/null 2>&1; then sudo apt-get install -y -q wireguard-tools
+        elif command -v dnf >/dev/null 2>&1; then sudo dnf install -y wireguard-tools
+        elif command -v pacman >/dev/null 2>&1; then sudo pacman -S --noconfirm wireguard-tools
+        else warn "Paketmanager unbekannt, bitte wireguard-tools selbst installieren"; fi
+      fi
+      if command -v nmcli >/dev/null 2>&1; then
+        nmcli connection delete "$NAME-laptop" >/dev/null 2>&1 || true
+        cp "$WGCONF" "$STATE_HOME/$NAME-laptop.tmp.conf"
+        if sudo nmcli connection import type wireguard file "$WGCONF" >/dev/null 2>&1; then
+          sudo nmcli connection modify "$NAME-laptop" connection.autoconnect no >/dev/null 2>&1 || true
+          sudo nmcli connection up "$NAME-laptop" >/dev/null 2>&1 && ok "Tunnel an (NetworkManager: $NAME-laptop)"
+        else
+          warn "nmcli-Import fehlgeschlagen, versuche wg-quick"
+          sudo cp "$WGCONF" "/etc/wireguard/$NAME.conf" && sudo wg-quick up "$NAME" && ok "Tunnel an (wg-quick $NAME)"
+        fi
+        rm -f "$STATE_HOME/$NAME-laptop.tmp.conf"
+      else
+        sudo cp "$WGCONF" "/etc/wireguard/$NAME.conf" && sudo wg-quick up "$NAME" && ok "Tunnel an (wg-quick $NAME)"
+      fi
+      ;;
+  esac
+  
+  if curl -s --max-time 6 -o /dev/null "http://$WGIP:8000"; then
+    ok "Dashboard durch den Tunnel erreichbar: http://$WGIP:8000"
+  else
+    warn "Dashboard antwortet nicht durch den Tunnel."
+    say  "  Ist der Tunnel wirklich an? (Linux: nmcli connection up $NAME-laptop / Mac: WireGuard-App, Schalter an)"
+    say  "  Dann Enter, ich teste nochmal."
+    pause_enter
+  fi
+  if curl -s --max-time 6 -o /dev/null "http://$WGIP:8000"; then
+    ssh -o BatchMode=yes "$NAME" "sudo bash -c 'mkdir -p /var/lib/coolify-shield; echo ok > /var/lib/coolify-shield/tunnel.ok'" >/dev/null 2>&1
+    state_set tunnel ok
+    return 0
+  fi
+  return 1
+}
+
 # ===========================================================================
 printf '\n%s  coolify-shield%s  %sDein Server. Deine Tuer. Dein Schluessel.%s\n\n' "$C_BOLD" "$C_RESET" "$C_DIM" "$C_RESET"
 say "  Ich fuehre dich Schritt fuer Schritt. Wenn ich dich brauche, steht da"
@@ -290,6 +361,7 @@ upload_server_part() {
 }
 upload_server_part
 ok "Server-Teil liegt unter $SERVER_DIR"
+ssh -o BatchMode=yes "$NAME" "sudo bash -c 'mkdir -p /var/lib/coolify-shield; grep -q ^driver= /var/lib/coolify-shield/laptop.env 2>/dev/null || echo driver=laptop >> /var/lib/coolify-shield/laptop.env'" >/dev/null 2>&1
 
 runde=0
 while :; do
@@ -359,70 +431,20 @@ while :; do
     continue
   fi
 
+  if [ "$S_PHASE" = "tunnel" ]; then
+    until setup_tunnel; do
+      ask_yn "Tunnel nochmal versuchen?" "j" || { warn "Ohne Tunnel kommst du nicht ans Dashboard. Spaeter: bash start.sh erneut."; exit 1; }
+    done
+    continue
+  fi
   [ "$S_PHASE" = "done" ] && break
   if [ "$rc" -ne 0 ]; then
     warn "Der Server-Teil ist mit Fehler beendet (Code $rc). Siehe Ausgabe oben."
     ask_yn "Nochmal versuchen?" "j" || exit 1
   fi
 done
-next_up "Server ist eingerichtet und abgesichert" \
-        "WireGuard auf deinem Laptop, damit du ans Dashboard kommst."
+[ "$(state_get tunnel)" = "ok" ] || setup_tunnel || warn "Tunnel-Test nicht bestanden, siehe oben."
 
-# ---------------------------------------------------------------------------
-# Schritt 5 · WireGuard auf dem Laptop
-# ---------------------------------------------------------------------------
-step "Schritt 5 · Dein Tunnel"
-WGCONF="$STATE_HOME/$NAME-laptop.conf"
-if [ -n "$S_WGCONF" ]; then
-  ssh -o BatchMode=yes "$NAME" "sudo cat $S_WGCONF" > "$WGCONF" 2>/dev/null && chmod 600 "$WGCONF" \
-    && ok "Tunnel-Datei geholt: $WGCONF" || warn "Tunnel-Datei konnte nicht geholt werden"
-fi
-WGIP="${S_WGIP:-10.8.0.1}"
-
-case "$OS" in
-  mac)
-    if [ -d "/Applications/WireGuard.app" ]; then
-      ok "WireGuard-App ist installiert"
-    else
-      say "  Ich oeffne den App Store mit der WireGuard-App. Bitte installieren."
-      open "macappstore://apps.apple.com/app/wireguard/id1451685025" 2>/dev/null || say "  https://apps.apple.com/app/wireguard/id1451685025"
-      pause_enter
-    fi
-    open -a WireGuard 2>/dev/null || true
-    next_up "Tunnel-Datei liegt bereit" "Tunnel in der App importieren und einschalten." \
-      "In WireGuard: \"Tunnel aus Datei importieren\" → $WGCONF → dann \"Aktivieren\"."
-    pause_enter
-    ;;
-  linux)
-    if ! command -v wg >/dev/null 2>&1; then
-      say "  Ich installiere WireGuard (fragt nach deinem Passwort)."
-      if command -v apt-get >/dev/null 2>&1; then sudo apt-get install -y -q wireguard-tools
-      elif command -v dnf >/dev/null 2>&1; then sudo dnf install -y wireguard-tools
-      elif command -v pacman >/dev/null 2>&1; then sudo pacman -S --noconfirm wireguard-tools
-      else warn "Paketmanager unbekannt, bitte wireguard-tools selbst installieren"; fi
-    fi
-    if command -v nmcli >/dev/null 2>&1; then
-      nmcli connection delete "$NAME-laptop" >/dev/null 2>&1 || true
-      cp "$WGCONF" "$STATE_HOME/$NAME-laptop.tmp.conf"
-      if sudo nmcli connection import type wireguard file "$WGCONF" >/dev/null 2>&1; then
-        sudo nmcli connection modify "$NAME-laptop" connection.autoconnect no >/dev/null 2>&1 || true
-        sudo nmcli connection up "$NAME-laptop" >/dev/null 2>&1 && ok "Tunnel an (NetworkManager: $NAME-laptop)"
-      else
-        warn "nmcli-Import fehlgeschlagen, versuche wg-quick"
-        sudo cp "$WGCONF" "/etc/wireguard/$NAME.conf" && sudo wg-quick up "$NAME" && ok "Tunnel an (wg-quick $NAME)"
-      fi
-      rm -f "$STATE_HOME/$NAME-laptop.tmp.conf"
-    else
-      sudo cp "$WGCONF" "/etc/wireguard/$NAME.conf" && sudo wg-quick up "$NAME" && ok "Tunnel an (wg-quick $NAME)"
-    fi
-    ;;
-esac
-
-if curl -s --max-time 6 -o /dev/null "http://$WGIP:8000"; then
-  ok "Dashboard durch den Tunnel erreichbar: http://$WGIP:8000"
-else
-  warn "Dashboard antwortet nicht durch den Tunnel. Ist der Tunnel wirklich an? Dann nochmal: curl http://$WGIP:8000"
-fi
 
 # ---------------------------------------------------------------------------
 # Fertig
