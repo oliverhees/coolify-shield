@@ -207,6 +207,8 @@ function Get-SudoPrefix {
 }
 
 # ssh_ok: kommt man rein? (ohne Rueckfragen, Hostkey beim ersten Mal annehmen)
+# Der letzte Fehler landet in $SshLastErr, damit wir ihn zeigen koennen.
+$SshLastErr = ''
 function Test-SshLogin {
     $r = Invoke-Quiet 'ssh.exe' @(
         '-o', 'BatchMode=yes',
@@ -214,7 +216,23 @@ function Test-SshLogin {
         '-o', 'StrictHostKeyChecking=accept-new',
         $Name, 'true'
     )
+    $script:SshLastErr = ((@($r.Err) -join "`n")).Trim()
     return ($r.Code -eq 0)
+}
+
+# Hetzner vergibt IP-Adressen wieder. Ein alter Fingerabdruck in known_hosts
+# fuer diese IP gehoert dann zu einem fremden, laengst geloeschten Server.
+# Bei einem gerade frisch bestellten Server darf der Eintrag weg.
+function Remove-HostKey {
+    param([string]$Ip)
+    if ($Ip -eq '') { return }
+    # -F meldet Erfolg nur, wenn ein Eintrag existiert. Sonst gibt es nichts zu tun.
+    $gefunden = Invoke-Quiet 'ssh-keygen.exe' @('-F', $Ip)
+    if ($gefunden.Code -ne 0) { return }
+    $entfernt = Invoke-Quiet 'ssh-keygen.exe' @('-R', $Ip)
+    if ($entfernt.Code -eq 0) {
+        Show-Skip ('Alter Fingerabdruck fuer ' + $Ip + ' aus known_hosts entfernt (IP wurde frueher schon mal vergeben)')
+    }
 }
 
 # Wartet, bis der Server per SSH antwortet.
@@ -446,6 +464,7 @@ if ((Get-State 'ip') -ne '' -and (Test-SshLogin)) {
     }
     Set-State 'ip' $Ip
     Write-SshConfig (Get-State 'user') $Ip
+    Remove-HostKey $Ip
 }
 Show-NextUp ('Server bestellt, Adresse ' + (Get-State 'ip') + ' eingetragen') `
             'Ich teste, ob dein Schluessel am Server passt.'
@@ -462,15 +481,41 @@ while (-not (Wait-Ssh 180)) {
             'Bei Hetzner pruefen, ob der Server laeuft und ob dein SSH-Key beim Bestellen angehakt war. Notfalls Server loeschen und neu bestellen, das kostet nichts extra.'
     }
     Show-Err 'Ich komme nicht auf den Server.'
+
+    # Was sagt SSH selbst? Im Klartext, damit der Grund nicht geraten werden muss.
+    if ($SshLastErr -like '*REMOTE HOST IDENTIFICATION HAS CHANGED*') {
+        Show-Say '  SSH kennt diese IP mit einem anderen Fingerabdruck (die IP hatte frueher einen anderen Server).'
+        Remove-HostKey (Get-State 'ip')
+        continue
+    }
+    elseif ($SshLastErr -like '*Permission denied*') {
+        Show-Say '  SSH sagt: Schluessel wird nicht akzeptiert. Wurde der Key beim Bestellen angehakt?'
+    }
+    elseif ($SshLastErr -like '*Connection refused*') {
+        Show-Say '  SSH sagt: Verbindung abgelehnt. Der Server bootet wahrscheinlich noch.'
+    }
+    elseif ($SshLastErr -like '*timed out*' -or $SshLastErr -like '*No route*') {
+        Show-Say '  SSH sagt: keine Antwort. IP pruefen, oder der Server ist noch nicht fertig.'
+    }
+    elseif ($SshLastErr -ne '') {
+        $letzteZeile = ''
+        foreach ($z in @($SshLastErr -split "`n")) {
+            $t = ([string]$z).Trim()
+            if ($t -ne '') { $letzteZeile = $t }
+        }
+        if ($letzteZeile -ne '') { Show-Say ('  SSH sagt: ' + $letzteZeile) }
+    }
+
     Show-Say '  Haeufigste Gruende:'
     Show-Say '   · Beim Bestellen wurde der SSH-Key nicht angehakt -> Server loeschen, neu bestellen (kostet nichts extra)'
     Show-Say '   · IP vertippt -> gleich nochmal eingeben'
     Show-Say '   · Server ist noch nicht fertig -> einfach nochmal warten'
     Write-Host ''
-    if (Read-YesNo 'IP neu eingeben?' 'n') {
-        $Ip = Read-Value 'IP-Adresse' (Get-State 'ip')
-        Set-State 'ip' $Ip
-        Write-SshConfig (Get-State 'user') $Ip
+    $Antwort = Read-Value 'Nochmal warten = Enter, oder die richtige IP eintippen' (Get-State 'ip')
+    if ($Antwort -match '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' -and $Antwort -ne (Get-State 'ip')) {
+        Set-State 'ip' $Antwort
+        Write-SshConfig (Get-State 'user') $Antwort
+        Remove-HostKey $Antwort
     }
 }
 Show-Ok ('Login klappt: ssh ' + $Name)
