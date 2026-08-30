@@ -58,8 +58,10 @@ AllowedIPs = 10.8.0.2/32
 PublicKey = $hpub
 AllowedIPs = 10.8.0.3/32
 CONF
-    # Split-Tunnel: nur das VPN-Netz und die oeffentliche Server-IP laufen
-    # durch den Tunnel. Alles andere (YouTube, Mail) bleibt wie es ist.
+    # Split-Tunnel: nur das VPN-Netz laeuft durch den Tunnel. Alles andere
+    # (YouTube, Mail) bleibt wie es ist. NIE die oeffentliche Server-IP in
+    # AllowedIPs aufnehmen: dann wuerde der Tunnel seinen eigenen Endpunkt
+    # durch sich selbst routen (Schleife, kein Handshake, SSH tot).
     local client
     for client in laptop:10.8.0.2:$lpriv handy:10.8.0.3:$hpriv; do
       IFS=: read -r cname caddr cpriv <<< "$client"
@@ -71,7 +73,7 @@ Address = $caddr/24
 [Peer]
 PublicKey = $spub
 Endpoint = $ip:$WG_PORT
-AllowedIPs = $WG_SUBNET, $ip/32
+AllowedIPs = $WG_SUBNET
 PersistentKeepalive = 25
 CONF
       chmod 600 "$WG_DIR/$cname.conf"
