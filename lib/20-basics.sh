@@ -1,51 +1,64 @@
 #!/usr/bin/env bash
-# Phase A :: Grundlagen — risikofrei
+# Phase A :: Grundlagen, risikofrei
 #
-# STATUS: STUB. Struktur steht, Aktionen fehlen.
-#
-# Regel fuer diese Phase: Nichts, was den Zugang kappen kann. Diese Phase
-# darf ein Anfaenger blind laufen lassen. Kein Watchdog noetig.
+# Nichts hier kann den Zugang kappen. Kein Watchdog noetig.
 
 phase_basics() {
-  step "Phase A · Grundlagen (risikofrei)"
-  say "  Hier kann dich nichts aussperren. Alles ohne Netzwerkeingriff."
+  step "Phase 6 · Grundschutz (risikofrei)"
+  say "  Automatische Sicherheitsupdates und ein Tuersteher gegen Passwort-Rateversuche."
   printf '\n'
 
-  # --- A1: Sicherheitsupdates automatisieren ------------------------------
-  if state_has "basics.autoupdate"; then
-    skip "Automatische Updates – laeuft bereits"
-  else
-    # TODO: debian -> unattended-upgrades + 20auto-upgrades schreiben
-    # TODO: rhel   -> dnf-automatic installieren, timer enablen
-    # TODO: suse   -> zypper-automatic
-    # TODO: arch   -> bewusst nichts (Rolling Release, Auto-Update = schlechte Idee)
-    warn "STUB: automatische Updates noch nicht implementiert"
-  fi
+  # --- A1: Sicherheitsupdates automatisch --------------------------------
+  case "$PKG" in
+    apt)
+      write_file /etc/apt/apt.conf.d/20auto-upgrades 644 <<'CONF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+CONF
+      run systemctl enable --now unattended-upgrades
+      ok "Sicherheitsupdates laufen ab jetzt automatisch"
+      ;;
+    dnf)
+      run systemctl enable --now dnf-automatic.timer
+      ok "Sicherheitsupdates laufen ab jetzt automatisch"
+      ;;
+    pacman) skip "Arch: keine automatischen Updates (Rolling Release)" ;;
+    *)      warn "Automatische Updates fuer $OS_FAMILY nicht eingerichtet" ;;
+  esac
 
   # --- A2: Brute-Force-Schutz ---------------------------------------------
-  if state_has "basics.crowdsec"; then
-    skip "CrowdSec – laeuft bereits"
-  else
-    # TODO: CrowdSec installieren (Repo-Skript pro OS_FAMILY)
-    # TODO: Collections: crowdsecurity/sshd, crowdsecurity/traefik
-    # TODO: Bouncer: crowdsec-firewall-bouncer-iptables|nftables
-    # TODO: fail2ban als Fallback, wenn CrowdSec-Repo nicht erreichbar
-    warn "STUB: Brute-Force-Schutz noch nicht implementiert"
-  fi
+  # ignoreip ist Pflicht: Coolify verbindet sich aus seinem Container per SSH
+  # mit dem Host. Wuerde fail2ban das Docker-Netz sperren, bricht Coolify.
+  have fail2ban-server || pkg_install fail2ban
+  write_file /etc/fail2ban/jail.d/coolify-shield.local 644 <<CONF
+[DEFAULT]
+bantime  = 1h
+findtime = 10m
+maxretry = 5
+backend  = systemd
+ignoreip = $PRIVATE_NETS $WG_SUBNET
 
-  # --- A3: Traefik-Config vorbereiten (noch NICHT aktivieren) -------------
-  # Datei wird geschrieben, aber ohne Middleware-Verweis an den Routern.
-  # Scharf geschaltet wird erst in Phase 40, mit Watchdog.
-  # TODO: /data/coolify/proxy/dynamic/shield-allowlist.yaml erzeugen
-  # TODO: Subnetz aus Phase 50 (WireGuard) einsetzen
-  # ACHTUNG beim spaeteren Aktivieren: Die Middleware muss an ALLE
-  # Dashboard-Router, auch die Realtime-/Terminal-Router (6001/6002).
-  # Sonst ist die Loginseite dicht, aber das Terminal offen.
-  warn "STUB: Traefik-Config-Vorbereitung noch nicht implementiert"
+[sshd]
+enabled = true
+CONF
+  run systemctl enable --now fail2ban
+  run systemctl restart fail2ban
+  ok "fail2ban sperrt IPs nach 5 Fehlversuchen fuer eine Stunde"
 
-  # --- A4: Logrotation fuer unser eigenes Log -----------------------------
-  # TODO: /etc/logrotate.d/coolify-shield
+  # --- A3: Logrotation fuer unser Log -------------------------------------
+  write_file /etc/logrotate.d/coolify-shield 644 <<'CONF'
+/var/log/coolify-shield.log {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+}
+CONF
 
   state_set "phase.basics" "$(date -Iseconds)"
-  course_cue "Modul 2 · komplett"
+  laptop_env_set "phase" "basics"
+  next_up "Automatische Updates und Brute-Force-Schutz aktiv" \
+          "SSH wird auf Schluessel-Login umgestellt. Mit Rueckfall-Timer, falls etwas klemmt."
 }

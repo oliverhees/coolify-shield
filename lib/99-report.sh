@@ -9,7 +9,7 @@
 REPORT_PATH="/root/coolify-shield-report.html"
 
 phase_report() {
-  step "Phase 9 · Report"
+  step "Phase 10 · Report"
 
   local gruen=0 gelb=0 rot=0 offen=0 zeile
   for zeile in "${AUDIT_ROWS[@]}"; do

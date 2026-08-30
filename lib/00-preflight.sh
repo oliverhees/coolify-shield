@@ -37,17 +37,26 @@ phase_preflight() {
            "Paket 'at' installieren, dann erneut starten."
 
   # --- Docker & Coolify ---------------------------------------------------
-  have docker || die "Docker ist nicht installiert." \
-                     "Ohne Coolify-Installation ergibt dieses Script keinen Sinn."
-  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'coolify'; then
-    ok "Coolify-Container laeuft"
-    state_set "coolify.gefunden" 1
-  else
-    if [ "$FORCE" = "1" ]; then
-      warn "Kein laufender Coolify-Container gefunden – weiter wegen --force"
+  if [ "${MODUS:-}" = "setup" ]; then
+    # Gefuehrter Weg: Docker und Coolify kommen erst in Phase 2.
+    if have docker && docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'coolify'; then
+      ok "Coolify-Container laeuft bereits"
     else
-      die "Auf diesem Server laeuft kein Coolify." \
-          "Erst Coolify installieren, dann dieses Script."
+      skip "Coolify noch nicht installiert – kommt in Phase 2"
+    fi
+  else
+    have docker || die "Docker ist nicht installiert." \
+                       "Ohne Coolify-Installation ergibt dieses Script keinen Sinn. Anfaenger-Weg: --setup"
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'coolify'; then
+      ok "Coolify-Container laeuft"
+      state_set "coolify.gefunden" 1
+    else
+      if [ "$FORCE" = "1" ]; then
+        warn "Kein laufender Coolify-Container gefunden – weiter wegen --force"
+      else
+        die "Auf diesem Server laeuft kein Coolify." \
+            "Erst Coolify installieren, dann dieses Script. Oder den Anfaenger-Weg nehmen: --setup"
+      fi
     fi
   fi
 
@@ -88,7 +97,7 @@ phase_preflight() {
     ok "$keys SSH-Key(s) hinterlegt"
     state_set "ssh.keys" "$keys"
   else
-    warn "Kein SSH-Key gefunden – Phase 3 (SSH-Haertung) wird uebersprungen"
+    warn "Kein SSH-Key gefunden – die SSH-Haertung wird uebersprungen"
     state_set "ssh.keys" "0"
   fi
 
@@ -109,9 +118,10 @@ phase_preflight() {
   printf '\n  %sBevor es weitergeht:%s Oeffne die Rescue-Konsole deines Hosters\n' "$C_BOLD" "$C_RESET"
   printf '  in einem Browser-Tab. Steht in NOTFALL.md. Das ist dein Rettungsanker.\n\n'
 
-  if [ "$ASSUME_YES" != "1" ] && [ "$DRY_RUN" != "1" ]; then
+  if [ "$ASSUME_YES" != "1" ] && [ "$DRY_RUN" != "1" ] && ! state_has "preflight.rescue_ok"; then
     ask_yn "Rescue-Konsole offen und einsatzbereit?" "n" \
       || die "Abgebrochen – zu Recht." "NOTFALL.md lesen, Zugang testen, dann neu starten."
+    state_set "preflight.rescue_ok" 1
   fi
 
   state_set "phase.preflight" "$(date -Iseconds)"

@@ -21,7 +21,7 @@ audit_print() {
 }
 
 phase_audit() {
-  step "Phase 1 · Bestandsaufnahme"
+  step "Bestandsaufnahme"
   say "  Es wird nichts geaendert. Nur geschaut, wie es steht."
   printf '\n'
 
@@ -90,10 +90,24 @@ phase_audit() {
   # --- Was das Script NICHT pruefen kann ----------------------------------
   # 2FA und Passwortstaerke stecken in Coolifys Datenbank. Da schreibt ein
   # Fremdscript nicht rein und liest auch nichts raus. Bleibt Handarbeit.
-  audit_add coolify_2fa "Zwei-Faktor in Coolify" unbekannt \
-    "nur du weisst das – Profil → Two-factor Authentication" user
-  audit_add coolify_reg "Registrierung offen?" unbekannt \
-    "im Dashboard pruefen: Settings → Registration Allowed" user
+  # Seit --setup: Beides steht in Coolifys Datenbank und wird gelesen (nur SELECT).
+  local tfa reg
+  tfa="$(coolify_psql 'select count(*) from users where two_factor_confirmed_at is not null;' 2>/dev/null || true)"
+  reg="$(coolify_psql 'select is_registration_enabled from instance_settings limit 1;' 2>/dev/null || true)"
+  if [ -n "$tfa" ] && [ "$tfa" -ge 1 ] 2>/dev/null; then
+    audit_add coolify_2fa "Zwei-Faktor in Coolify" gruen "aktiv bei $tfa Nutzer(n)" user
+  elif [ -n "$tfa" ]; then
+    audit_add coolify_2fa "Zwei-Faktor in Coolify" rot "bei keinem Nutzer aktiv – Profil → Two-factor Authentication" user
+  else
+    audit_add coolify_2fa "Zwei-Faktor in Coolify" unbekannt \
+      "nicht auslesbar – Profil → Two-factor Authentication" user
+  fi
+  case "$reg" in
+    f) audit_add coolify_reg "Registrierung" gruen "geschlossen" user ;;
+    t) audit_add coolify_reg "Registrierung" rot "offen – Settings → Registration Allowed ausschalten" user ;;
+    *) audit_add coolify_reg "Registrierung offen?" unbekannt \
+         "nicht auslesbar – Settings → Registration Allowed" user ;;
+  esac
   audit_add coolify_pw "Passwortstaerke" unbekannt \
     "25+ Zeichen aus dem Passwort-Manager" user
 

@@ -6,7 +6,7 @@
 # Pfade & Konstanten
 # ---------------------------------------------------------------------------
 # shellcheck disable=SC2034  # wird in install.sh im Banner genutzt
-SHIELD_VERSION="0.1.0-scaffold"
+SHIELD_VERSION="0.2.0"
 LOG_FILE="/var/log/coolify-shield.log"
 STATE_DIR="/var/lib/coolify-shield"
 BACKUP_DIR="/var/backups/coolify-shield"
@@ -74,6 +74,7 @@ ask_yn() {
 
 ask_value() {
   local frage="$1" default="$2" antwort
+  [ "$ASSUME_YES" = "1" ] && { printf '%s' "$default"; return 0; }
   read -r -p "  $frage [$default] " antwort </dev/tty || antwort=""
   printf '%s' "${antwort:-$default}"
 }
@@ -332,4 +333,91 @@ watchdog_list() {
 # ---------------------------------------------------------------------------
 need_root() {
   [ "$(id -u)" = "0" ] || die "Das Script braucht Root-Rechte." "So starten: sudo ./install.sh"
+}
+
+# ---------------------------------------------------------------------------
+# Gefuehrter Ablauf (--setup): Ansagen, Zustand fuer den Laptop, Helfer
+# ---------------------------------------------------------------------------
+EXIT_REBOOT=75                       # "Server startet neu, komm wieder" (Laptop-Script wertet das aus)
+LAPTOP_ENV="$STATE_DIR/laptop.env"   # Das liest das Laptop-Script nach jedem Lauf
+WG_SUBNET="10.8.0.0/24"
+WG_SERVER_IP="10.8.0.1"
+WG_PORT="51820"
+WG_DIR="$STATE_DIR/wireguard"
+PRIVATE_NETS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16"
+
+# Der feste Block am Ende jeder Phase. Drei Zeilen, immer gleich aufgebaut.
+# next_up "<erledigt>" "<als naechstes>" ["<du musst jetzt>"]
+next_up() {
+  printf '\n'
+  printf '  %s✓ Erledigt:%s      %s\n' "$C_GREEN$C_BOLD" "$C_RESET" "$1"
+  printf '  %s▶ Als Naechstes:%s %s\n' "$C_BLUE$C_BOLD" "$C_RESET" "$2"
+  [ -n "${3:-}" ] && printf '  %s⏸ Du musst jetzt:%s %s\n' "$C_YELLOW$C_BOLD" "$C_RESET" "$3"
+  printf '\n'
+  log "NEXT erledigt=$1 | naechstes=$2 | du=${3:-}"
+}
+
+# Pause: wartet auf Enter. Im --yes-Modus wird nicht gewartet.
+pause_enter() {
+  [ "$ASSUME_YES" = "1" ] && return 0
+  printf '  %s[Enter] wenn du so weit bist%s ' "$C_BOLD" "$C_RESET"
+  read -r _ </dev/tty || true
+}
+
+# Zustand fuer das Laptop-Script: einfache key=value-Zeilen.
+laptop_env_set() {
+  mkdir -p "$STATE_DIR"
+  touch "$LAPTOP_ENV"
+  grep -v "^$1=" "$LAPTOP_ENV" > "$LAPTOP_ENV.tmp" 2>/dev/null || true
+  printf '%s=%s\n' "$1" "$2" >> "$LAPTOP_ENV.tmp"
+  mv "$LAPTOP_ENV.tmp" "$LAPTOP_ENV"
+  chmod 600 "$LAPTOP_ENV"
+}
+
+# Oeffentliche IPv4 des Servers (ohne Internet-Abfrage, wenn moeglich)
+public_ip() {
+  local ip
+  ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}' | head -n1)"
+  case "$ip" in
+    10.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*|192.168.*|"") ip="$(curl -4 -fsS --max-time 5 https://ifconfig.me 2>/dev/null || true)" ;;
+  esac
+  printf '%s' "$ip"
+}
+
+# Wartet, bis eine URL antwortet. wait_http <url> <sekunden>
+wait_http() {
+  local url="$1" max="${2:-300}" t=0
+  while [ "$t" -lt "$max" ]; do
+    curl -fsS --max-time 3 -o /dev/null "$url" 2>/dev/null && return 0
+    printf '.'; sleep 5; t=$(( t + 5 ))
+  done
+  printf '\n'; return 1
+}
+
+# Coolify-Datenbank lesen (nur SELECT). Zugangsdaten aus Coolifys eigener .env.
+coolify_psql() {
+  local envf="/data/coolify/source/.env" user db
+  [ -r "$envf" ] || return 1
+  user="$(sed -n 's/^DB_USERNAME=//p' "$envf" | tr -d '"' | head -n1)"
+  db="$(sed -n 's/^DB_DATABASE=//p' "$envf" | tr -d '"' | head -n1)"
+  docker exec coolify-db psql -U "${user:-coolify}" -d "${db:-coolify}" -tA -c "$1" 2>/dev/null
+}
+
+coolify_running() { docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'coolify'; }
+
+# Zeilen in eine Datei schreiben, im Trockenlauf nur anzeigen.
+# write_file <pfad> <modus>  (Inhalt via stdin)
+write_file() {
+  local pfad="$1" modus="${2:-644}" inhalt
+  inhalt="$(cat)"
+  if [ "$DRY_RUN" = "1" ]; then
+    printf '  %s[trocken]%s schreibe %s (%s):\n' "$C_DIM" "$C_RESET" "$pfad" "$modus"
+    printf '%s\n' "$inhalt" | sed 's/^/      │ /'
+    return 0
+  fi
+  backup_file "$pfad"
+  mkdir -p "$(dirname "$pfad")"
+  printf '%s\n' "$inhalt" > "$pfad"
+  chmod "$modus" "$pfad"
+  log "FILE $pfad ($modus)"
 }
