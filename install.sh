@@ -198,9 +198,9 @@ case "$MODUS" in
     else
       laufende="$(watchdog_list)"
       if [ -n "$laufende" ]; then
-        printf '\n  %sJetzt bist du dran:%s Zweites Terminal auf, Verbindung testen.\n' "$C_YELLOW$C_BOLD" "$C_RESET"
-        printf '  Klappt es: %ssudo ./install.sh --confirm%s\n' "$C_BOLD" "$C_RESET"
-        printf '  Klappt es nicht: nichts tun. Es rollt sich von selbst zurueck.\n\n'
+        printf '\n  %sJetzt bist du dran:%s Auf dem Laptop ein zweites Terminal, dort  ssh <dein-server>\n' "$C_YELLOW$C_BOLD" "$C_RESET"
+        printf '  Kommst du rein: auf dem Server  %ssudo %s/install.sh --confirm%s\n' "$C_BOLD" "$SCRIPT_DIR" "$C_RESET"
+        printf '  Kommst du nicht rein: nichts tun. Nach 10 Minuten ist alles wie vorher.\n\n'
       fi
     fi
     ;;

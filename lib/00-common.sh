@@ -318,10 +318,20 @@ watchdog_arm() {
   fi
 
   log "WDOG arm $name ${minuten}min :: $*"
-  printf '\n  %s⏱  Watchdog scharf.%s In %s Minuten wird "%s" automatisch zurueckgerollt.\n' \
+  printf '\n  %s⏱  Rueckfall-Timer laeuft.%s In %s Minuten wird "%s" automatisch zurueckgerollt,\n' \
     "$C_YELLOW$C_BOLD" "$C_RESET" "$minuten" "$name"
-  printf '     Teste JETZT in einem zweiten Terminal, ob du noch reinkommst.\n'
-  printf '     Klappt es: %ssudo ./install.sh --confirm%s\n' "$C_BOLD" "$C_RESET"
+  printf '     falls bis dahin niemand bestaetigt, dass der Zugang noch klappt.\n'
+  if [ "${MODUS:-}" = "setup" ]; then
+    printf '     Das macht gleich dein Laptop-Script von selbst: Es testet von aussen und bestaetigt.\n'
+    printf '     Du musst nichts tun.\n'
+  else
+    local script_pfad="${SCRIPT_DIR:-/opt/coolify-shield}/install.sh"
+    printf '     Teste JETZT auf deinem Laptop in einem ZWEITEN Terminal:  %sssh <dein-server>%s\n' "$C_BOLD" "$C_RESET"
+    printf '     Kommst du rein (Prompt erscheint)? Dann DORT auf dem Server:\n'
+    printf '       %ssudo %s --confirm%s\n' "$C_BOLD" "$script_pfad" "$C_RESET"
+    printf '     Kommst du NICHT rein (Permission denied / keine Antwort)? Nichts tun.\n'
+    printf '     Nach %s Minuten ist alles wieder wie vorher, dann in der Community melden.\n' "$minuten"
+  fi
 }
 
 watchdog_disarm() {
