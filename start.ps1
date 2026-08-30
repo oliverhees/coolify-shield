@@ -715,7 +715,9 @@ while ($true) {
     }
 
     # Rueckfall-Timer aktiv? Dann von aussen testen und bestaetigen.
-    if ($S_Watchdog -ne '') {
+    # Jeden Timer nur EINMAL bestaetigen: raeumt der Server die watchdog-Zeile
+    # nicht weg, liefe das Script sonst im Kreis (testen, bestaetigen, testen ...).
+    if ($S_Watchdog -ne '' -and (Get-State 'confirmed') -cne $S_Watchdog) {
         Show-Step 'Pruefung von aussen (Timer laeuft)'
         $Fehl = 0
         $ServerIp = Get-State 'ip'
@@ -774,6 +776,7 @@ while ($true) {
             $c = Invoke-Quiet 'ssh.exe' @('-o', 'BatchMode=yes', $Name, $confirmBefehl)
             if ($c.Code -eq 0) {
                 Show-Ok 'Bestaetigt, Rueckfall-Timer entschaerft'
+                Set-State 'confirmed' $S_Watchdog
             } else {
                 Show-Warn 'Konnte nicht bestaetigen. Der Timer rollt in 10 Minuten zurueck; einfach start.ps1 erneut.'
             }
