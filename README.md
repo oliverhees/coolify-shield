@@ -17,7 +17,7 @@
 
 *Ein Befehl auf deinem Laptop. Der Rest wird erklärt. Vor jedem riskanten Schritt ein Rückfall-Timer, der alles von selbst zurückrollt, wenn du nicht mehr reinkommst.*
 
-[**Für Anfänger: hier starten**](ANFAENGER.md) · [Quickstart](#-quickstart) · [Sicherheitsnetz](#️-das-sicherheitsnetz) · [Architektur](#-architektur) · [Ich bin ausgesperrt](NOTFALL.md) · [Entstehung](docs/ENTSTEHUNG.md) · [Lizenz](#-lizenz)
+[**Für Anfänger: hier starten**](ANFAENGER.md) · [Quickstart](#-quickstart) · [Sicherheitsnetz](#️-das-sicherheitsnetz) · [Architektur](#-architektur) · [Tunnel wieder einschalten](docs/TUNNEL-WIEDER-EINSCHALTEN.md) · [Ich bin ausgesperrt](NOTFALL.md) · [Entstehung](docs/ENTSTEHUNG.md) · [Lizenz](#-lizenz)
 
 </div>
 
@@ -277,6 +277,7 @@ coolify-shield/
 ├── ANFAENGER.md            ← für Einsteiger: alles von Null erklärt
 ├── NOTFALL.md              ← die wichtigste Datei im Repo
 ├── docs/ENTSTEHUNG.md      der Chat, aus dem das Projekt hervorging
+├── docs/TUNNEL-WIEDER-EINSCHALTEN.md  Tunnel nach längerer Pause wieder an (Windows, Mac, Linux, Handy)
 └── .github/workflows/      shellcheck bei jedem Push
 ```
 
@@ -407,7 +408,7 @@ Das sind zusammen ein paar Minuten Klickarbeit. Zusammen mit fail2ban und der Sc
 
 ## Warum WireGuard und nicht Tailscale
 
-WireGuard läuft komplett auf deinem Server, als Kernel-Modul, ohne Container. Kein Drittanbieter in der Steuerungsebene, keine Daten bei einem US-Anbieter, kein Auftragsverarbeitungsvertrag nötig. Auf dem Handy: offizielle WireGuard-App, QR-Code scannen, ein Tap zum Verbinden. Auf dem Laptop richtet das Start-Script den Tunnel ein.
+WireGuard läuft komplett auf deinem Server, als Kernel-Modul, ohne Container. Kein Drittanbieter in der Steuerungsebene, keine Daten bei einem US-Anbieter, kein Auftragsverarbeitungsvertrag nötig. Auf dem Handy: offizielle WireGuard-App, QR-Code scannen, ein Tap zum Verbinden. Auf dem Laptop richtet das Start-Script den Tunnel ein. Wie du ihn später wieder einschaltest, auch nach Wochen Pause, steht in [docs/TUNNEL-WIEDER-EINSCHALTEN.md](docs/TUNNEL-WIEDER-EINSCHALTEN.md).
 
 **Und warum kein wg-easy?** wg-easy ist WireGuard mit einer Weboberfläche. Die Oberfläche ist ein zweites Web-Login mit eigenem Passwort, das du dir merken, absichern und aus dem Internet fernhalten musst. Für Anfänger ist das eine Hürde mehr und für alle eine Angriffsfläche mehr. Das Script erzeugt stattdessen genau zwei Client-Dateien, eine für den Laptop und eine für das Handy. Mehr braucht es für ein Dashboard nicht. Willst du später ein drittes Gerät, ist das ein weiterer `[Peer]`-Block in `/etc/wireguard/wg0.conf`, kein Web-Panel.
 

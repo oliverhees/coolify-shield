@@ -778,7 +778,7 @@ Bei der Firewall zusätzlich: Im Browser `http://<deine-ip>:8000` aufrufen. Läd
 
 Ein paar Dinge ändern sich in deinem Alltag:
 
-- **Ins Coolify-Dashboard kommst du nur noch durch den VPN-Tunnel.** Handy oder Laptop: WireGuard einschalten, dann die Dashboard-Adresse aufrufen. Ohne Tunnel: Seite lädt nicht. Das ist gewollt — das ist der Schutz.
+- **Ins Coolify-Dashboard kommst du nur noch durch den VPN-Tunnel.** Handy oder Laptop: WireGuard einschalten, dann die Dashboard-Adresse aufrufen. Ohne Tunnel: Seite lädt nicht. Das ist gewollt — das ist der Schutz. Wie du den Tunnel auf Windows, Mac, Linux und Handy einschaltest (und was du tust, wenn er nach langer Pause nicht mehr will), steht in [docs/TUNNEL-WIEDER-EINSCHALTEN.md](docs/TUNNEL-WIEDER-EINSCHALTEN.md).
 - **SSH nur noch mit Key.** Wenn du einen neuen Laptop hast, brauchst du den Key dort. Passwort funktioniert nicht mehr.
 - **Nach einem Coolify-Update das Script nochmal laufen lassen.** Coolify kann bei Updates ein paar Einstellungen überschreiben. Das Script erkennt, was noch passt, und repariert nur, was fehlt. Es macht nichts doppelt.
 - **Beide Tunnel-Zugänge benutzen.** Das Script hat zwei angelegt: Laptop und Handy. Richte beide ein, auch wenn du das Handy selten brauchst. Zwei Geräte sind besser als eins — falls eins wegkommt. Den Handy-QR-Code kannst du jederzeit wieder anzeigen: `sudo qrencode -t ansiutf8 < /var/lib/coolify-shield/wireguard/handy.conf`. Ein drittes Gerät geht auch, ist aber Handarbeit in `/etc/wireguard/wg0.conf` (frag in der Community).
