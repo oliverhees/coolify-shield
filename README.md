@@ -41,6 +41,7 @@
 - [Ablauf der Phasen](#-ablauf-der-phasen)
 - [Was das Script bewusst nicht kann](#-was-das-script-bewusst-nicht-kann)
 - [Warum WireGuard und nicht Tailscale](#warum-wireguard-und-nicht-tailscale)
+- [Tunnel wieder einschalten](#-tunnel-wieder-einschalten)
 - [Unterstützte Systeme](#-unterstützte-systeme)
 - [Ehrliche Einordnung (bitte lesen)](#️-ehrliche-einordnung-bitte-lesen)
 - [Ich habe mich ausgesperrt](#-ich-habe-mich-ausgesperrt)
@@ -442,6 +443,12 @@ Voraussetzung: systemd (für den Watchdog) — ohne systemd Fallback auf das Pak
 - **Der Neustart in Phase 1 ist ein Bruch im Ablauf.** Das Script beendet sich mit Code 75 und setzt ein Flag; das Laptop-Script wartet und ruft neu auf. Läuft der Server-Teil ohne Laptop (`--setup` direkt per SSH gestartet), musst du nach dem Neustart selbst wieder `--setup` aufrufen.
 - **Bestehende SSH-Verbindungen laufen weiter**, auch wenn neue blockiert sind. Wer im *alten* Fenster testet und `--confirm` drückt, ist ausgesperrt. Immer in einem **neuen** Fenster testen — darauf fallen 80 % der Fälle rein. Im geführten Weg macht der Laptop genau das: eine frische Verbindung von außen, nicht die laufende Sitzung.
 - **Kein Ersatz für eine Sicherheitsberatung.** Das Script setzt bekannte Basismaßnahmen um. Es macht deinen Server nicht „unangreifbar".
+
+## 🔌 Tunnel wieder einschalten
+
+Du warst zwei Monate nicht am Server und kommst nicht mehr ins Dashboard? Das ist normal: Ohne Tunnel ist es nicht erreichbar, genau dafür ist es gebaut. Du musst nichts neu einrichten, nur den Tunnel einschalten.
+
+→ **[docs/TUNNEL-WIEDER-EINSCHALTEN.md](docs/TUNNEL-WIEDER-EINSCHALTEN.md)** Tunnel an und aus unter Windows, Mac, Linux und auf dem Handy. Dazu: woran du siehst, ob er wirklich steht, und eine Tabelle für den Fall, dass er nach langer Pause streikt (neue Server-IP, fehlende Firewall-Regel für UDP 51820, WireGuard auf dem Server gestoppt, anderes VPN im Weg).
 
 ## 🆘 Ich habe mich ausgesperrt
 
