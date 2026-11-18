@@ -53,7 +53,8 @@ ask_value() { local a; read -r -p "  $1 [$2] " a </dev/tty || a=""; printf '%s' 
 ask_yn() {
   local a hint; [ "${2:-n}" = "j" ] && hint="[J/n]" || hint="[j/N]"
   read -r -p "  $1 $hint " a </dev/tty || a=""; a="${a:-${2:-n}}"
-  case "${a,,}" in j|ja|y|yes) return 0 ;; *) return 1 ;; esac
+  # tr statt ${a,,}: das bash 3.2 auf dem Mac kennt die Kleinschreib-Ersetzung nicht.
+  case "$(printf '%s' "$a" | tr '[:upper:]' '[:lower:]')" in j|ja|y|yes) return 0 ;; *) return 1 ;; esac
 }
 
 trap 'printf "\n\n  Abgebrochen. Kein Problem: einfach nochmal starten, ich mache da weiter, wo wir waren.\n\n"; exit 130' INT
@@ -150,11 +151,28 @@ read_server_env() {
   S_WATCHDOG="$(printf '%s\n' "$raw" | sed -n 's/^watchdog=//p' | tail -n1)"
 }
 
+# Freien Port auf diesem Rechner suchen (8000, sonst 8001 bis 8010).
+# Ueber ihn reicht SSH das Coolify-Dashboard durch, solange die Einrichtung laeuft.
+pick_local_port() {
+  local p
+  for p in 8000 8001 8002 8003 8004 8005 8006 8007 8008 8009 8010; do
+    if ! (exec 3<>"/dev/tcp/127.0.0.1/$p") 2>/dev/null; then printf '%s' "$p"; return 0; fi
+  done
+  printf '8000'
+}
+
 # Server-Script starten (interaktiv). Gibt den Exit-Code zurueck.
+#
+# -L: Die Hetzner-Firewall laesst Port 8000 nicht durch (soll sie auch nicht),
+# und der WireGuard-Tunnel kommt erst spaeter. Damit du deinen Coolify-Account
+# trotzdem im Browser anlegen kannst, reicht diese SSH-Sitzung das Dashboard
+# an http://localhost:<port> auf deinem Rechner durch. Nichts wird geoeffnet.
 run_server() {
   local sudo_prefix=""
   [ "$(state_get user)" != "root" ] && sudo_prefix="sudo "
-  ssh -t -o ConnectTimeout=10 "$NAME" "${sudo_prefix}$SERVER_DIR/install.sh --setup"
+  ssh -t -o ConnectTimeout=10 -o ExitOnForwardFailure=no \
+    -L "127.0.0.1:$LOCAL_PORT:127.0.0.1:8000" \
+    "$NAME" "${sudo_prefix}$SERVER_DIR/install.sh --setup"
 }
 
 # ---------------------------------------------------------------------------
@@ -389,6 +407,9 @@ upload_server_part() {
 upload_server_part
 ok "Server-Teil liegt unter $SERVER_DIR"
 ssh -o BatchMode=yes "$NAME" "sudo bash -c 'mkdir -p /var/lib/coolify-shield; grep -q ^driver= /var/lib/coolify-shield/laptop.env 2>/dev/null || echo driver=laptop >> /var/lib/coolify-shield/laptop.env'" >/dev/null 2>&1
+# Dem Server sagen, unter welchem Port das Dashboard auf diesem Rechner ankommt.
+LOCAL_PORT="$(pick_local_port)"
+ssh -o BatchMode=yes "$NAME" "sudo bash -c 'f=/var/lib/coolify-shield/laptop.env; touch \$f; sed -i /^local_port=/d \$f; echo local_port=$LOCAL_PORT >> \$f'" >/dev/null 2>&1
 
 runde=0
 while :; do

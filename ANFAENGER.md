@@ -501,9 +501,9 @@ flowchart TD
 
 ### Server 3 · Dein Coolify-Account — „Das muss jetzt sofort passieren"
 
-**Was passiert:** Das Script zeigt dir eine Adresse wie `http://65.21.12.34:8000`. Die öffnest du im Browser, klickst auf **Register** und legst deinen Account an. Nimm ein langes Passwort aus dem Passwort-Manager, 25 Zeichen oder mehr. Danach drückst du im Terminal Enter, und das Script schaut in der Coolify-Datenbank nach, ob wirklich ein Nutzer existiert.
+**Was passiert:** Das Script zeigt dir die Adresse `http://localhost:8000` (ist der Port auf deinem Laptop belegt, eine Nummer daneben). Die öffnest du im Browser **auf deinem Laptop**, klickst auf **Register** und legst deinen Account an. Die Adresse führt durch die SSH-Verbindung des Scripts zum Server. Über die IP-Adresse des Servers kommst du nicht hin: Die Hetzner-Firewall lässt Port 8000 nicht durch, und so soll es bleiben. Nimm ein langes Passwort aus dem Passwort-Manager, 25 Zeichen oder mehr. Danach drückst du im Terminal Enter, und das Script schaut in der Coolify-Datenbank nach, ob wirklich ein Nutzer existiert.
 
-**Warum sofort und nicht am Ende:** Der **erste** Account in Coolify ist der Chef. Solange der nicht existiert, könnte ihn jeder aus dem Internet anlegen, der die Adresse errät. Deshalb kommt dieser Schritt direkt nach der Installation, noch vor allem anderen.
+**Warum sofort und nicht am Ende:** Der **erste** Account in Coolify ist der Chef. Solange der nicht existiert, könnte ihn jeder anlegen, der das Dashboard erreicht. Deshalb kommt dieser Schritt direkt nach der Installation, noch vor allem anderen.
 
 ### Server 4 · Dein eigener Benutzer — „Nicht mehr als root arbeiten"
 

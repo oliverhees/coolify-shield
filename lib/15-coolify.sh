@@ -49,9 +49,26 @@ phase_account() {
   laptop_env_set "server_ip" "$ip"
 
   say "  Warum jetzt und nicht spaeter: Der ERSTE Account in Coolify ist der Chef."
-  say "  Solange der nicht existiert, koennte ihn jeder aus dem Internet anlegen."
+  say "  Solange der nicht existiert, koennte ihn jeder anlegen, der das Dashboard erreicht."
   printf '\n'
-  printf '  %sOeffne im Browser:%s  http://%s:8000\n' "$C_BOLD" "$C_RESET" "$ip"
+  # Port 8000 ist aus dem Internet meist gar nicht erreichbar (Hetzner-Firewall
+  # aus der Anleitung), und der Tunnel kommt erst in Phase 5. Deshalb geht es
+  # hier ueber SSH: Das Laptop-Script reicht das Dashboard an localhost durch.
+  local lport=""
+  if [ "$(sed -n 's/^driver=//p' "$LAPTOP_ENV" 2>/dev/null | tail -n1)" = "laptop" ]; then
+    lport="$(sed -n 's/^local_port=//p' "$LAPTOP_ENV" 2>/dev/null | tail -n1)"
+  fi
+  if [ -n "$lport" ]; then
+    printf '  %sOeffne im Browser auf deinem Laptop:%s  http://localhost:%s\n' "$C_BOLD" "$C_RESET" "$lport"
+    printf '  (Die Adresse fuehrt durch deine SSH-Verbindung zum Server. Aus dem\n'
+    printf '   Internet ist das Dashboard nicht erreichbar, und das bleibt so.)\n'
+  else
+    printf '  Das Dashboard ist aus dem Internet nicht erreichbar, wenn deine Firewall\n'
+    printf '  Port 8000 sperrt (so soll es sein). Oeffne auf deinem Laptop ein zweites\n'
+    printf '  Terminal und lass es offen:\n\n'
+    printf '    %sssh -L 8000:127.0.0.1:8000 %s@%s%s\n\n' "$C_BOLD" "${SUDO_USER:-root}" "$ip" "$C_RESET"
+    printf '  %sDann im Browser:%s  http://localhost:8000\n' "$C_BOLD" "$C_RESET"
+  fi
   printf '  Klicke auf %sRegister%s, gib Name, E-Mail und ein langes Passwort ein\n' "$C_BOLD" "$C_RESET"
   printf '  (am besten aus dem Passwort-Manager, 25+ Zeichen).\n'
   printf '  Wenn du das Dashboard siehst, bist du fertig. Die Einrichtungs-\n'

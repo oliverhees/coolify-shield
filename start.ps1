@@ -313,10 +313,28 @@ function Read-ServerEnv {
 }
 
 # Server-Script starten (interaktiv, stdin und stdout gehen durch). Gibt den Exit-Code zurueck.
+#
+# -L: Die Hetzner-Firewall laesst Port 8000 nicht durch (soll sie auch nicht),
+# und der WireGuard-Tunnel kommt erst spaeter. Damit der Coolify-Account
+# trotzdem im Browser angelegt werden kann, reicht diese SSH-Sitzung das
+# Dashboard an http://localhost:<port> auf diesem Rechner durch.
 function Invoke-ServerSetup {
     $befehl = (Get-SudoPrefix) + $ServerDir + '/install.sh --setup'
-    & ssh.exe -t -o ConnectTimeout=10 $Name $befehl
+    $weiter = '127.0.0.1:' + $script:LocalPort + ':127.0.0.1:8000'
+    & ssh.exe -t -o ConnectTimeout=10 -o ExitOnForwardFailure=no -L $weiter $Name $befehl
     return $LASTEXITCODE
+}
+
+# Freien Port auf diesem Rechner suchen (8000, sonst 8001 bis 8010).
+function Get-FreeLocalPort {
+    foreach ($p in 8000..8010) {
+        try {
+            $l = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $p)
+            $l.Start(); $l.Stop()
+            return $p
+        } catch { }
+    }
+    return 8000
 }
 
 # ---------------------------------------------------------------------------
@@ -713,6 +731,14 @@ $DriverBefehl = 'sudo bash -c ' + "'" +
     'grep -q ^driver= /var/lib/coolify-shield/laptop.env 2>/dev/null || ' +
     'echo driver=laptop >> /var/lib/coolify-shield/laptop.env' + "'"
 $null = Invoke-Quiet 'ssh.exe' @('-o', 'BatchMode=yes', $Name, $DriverBefehl)
+
+# Dem Server sagen, unter welchem Port das Dashboard auf diesem Rechner ankommt.
+$script:LocalPort = Get-FreeLocalPort
+$PortBefehl = 'sudo bash -c ' + "'" +
+    'f=/var/lib/coolify-shield/laptop.env; touch $f; ' +
+    'sed -i /^local_port=/d $f; ' +
+    'echo local_port=' + $script:LocalPort + ' >> $f' + "'"
+$null = Invoke-Quiet 'ssh.exe' @('-o', 'BatchMode=yes', $Name, $PortBefehl)
 
 $Runde = 0
 while ($true) {
