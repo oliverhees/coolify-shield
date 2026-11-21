@@ -161,18 +161,37 @@ pick_local_port() {
   printf '8000'
 }
 
-# Server-Script starten (interaktiv). Gibt den Exit-Code zurueck.
+# Dashboard-Weiterleitung (eigene SSH-Verbindung im Hintergrund).
 #
-# -L: Die Hetzner-Firewall laesst Port 8000 nicht durch (soll sie auch nicht),
+# Die Hetzner-Firewall laesst Port 8000 nicht durch (soll sie auch nicht),
 # und der WireGuard-Tunnel kommt erst spaeter. Damit du deinen Coolify-Account
-# trotzdem im Browser anlegen kannst, reicht diese SSH-Sitzung das Dashboard
+# trotzdem im Browser anlegen kannst, reicht eine SSH-Verbindung das Dashboard
 # an http://localhost:<port> auf deinem Rechner durch. Nichts wird geoeffnet.
+#
+# Wichtig: NICHT in der interaktiven Sitzung (run_server). SSH beendet sich erst,
+# wenn alle weitergeleiteten Verbindungen zu sind. Ist der Coolify-Tab im Browser
+# offen, haengt run_server sonst nach dem Server-Teil fest, und der Rueckfall-
+# Timer laeuft ab, ohne dass das Laptop-Script testen und bestaetigen kann.
+FWD_PID=""
+forward_start() {
+  [ -n "$FWD_PID" ] && kill -0 "$FWD_PID" 2>/dev/null && return 0
+  ssh -n -N -o BatchMode=yes -o ConnectTimeout=10 -o ExitOnForwardFailure=yes \
+    -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+    -L "127.0.0.1:$LOCAL_PORT:127.0.0.1:8000" "$NAME" >/dev/null 2>&1 &
+  FWD_PID=$!
+}
+forward_stop() {
+  [ -n "$FWD_PID" ] && kill "$FWD_PID" 2>/dev/null
+  FWD_PID=""
+}
+trap forward_stop EXIT
+
+# Server-Script starten (interaktiv). Gibt den Exit-Code zurueck.
 run_server() {
   local sudo_prefix=""
   [ "$(state_get user)" != "root" ] && sudo_prefix="sudo "
-  ssh -t -o ConnectTimeout=10 -o ExitOnForwardFailure=no \
-    -L "127.0.0.1:$LOCAL_PORT:127.0.0.1:8000" \
-    "$NAME" "${sudo_prefix}$SERVER_DIR/install.sh --setup"
+  forward_start
+  ssh -t -o ConnectTimeout=10 "$NAME" "${sudo_prefix}$SERVER_DIR/install.sh --setup"
 }
 
 # ---------------------------------------------------------------------------
@@ -422,6 +441,7 @@ while :; do
   # Reboot noetig?
   if [ "$rc" -eq "$EXIT_REBOOT" ] || [ "$S_REBOOT" = "pending" ]; then
     say "  Der Server startet neu. Das dauert etwa eine Minute."
+    forward_stop
     ssh -o BatchMode=yes "$NAME" 'sudo rm -f /var/lib/coolify-shield/reboot-pending; sudo sed -i "/^reboot=/d" /var/lib/coolify-shield/laptop.env; sudo systemd-run --on-active=2s /sbin/reboot' >/dev/null 2>&1 || true
     sleep 20
     wait_ssh 300 || die "Der Server ist nach dem Neustart nicht erreichbar." "Bei Hetzner in der Serverliste nachsehen, ob er laeuft. Dann start.sh erneut."

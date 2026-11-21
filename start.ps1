@@ -312,16 +312,40 @@ function Read-ServerEnv {
     }
 }
 
-# Server-Script starten (interaktiv, stdin und stdout gehen durch). Gibt den Exit-Code zurueck.
+# Dashboard-Weiterleitung (eigene SSH-Verbindung im Hintergrund).
 #
-# -L: Die Hetzner-Firewall laesst Port 8000 nicht durch (soll sie auch nicht),
+# Die Hetzner-Firewall laesst Port 8000 nicht durch (soll sie auch nicht),
 # und der WireGuard-Tunnel kommt erst spaeter. Damit der Coolify-Account
-# trotzdem im Browser angelegt werden kann, reicht diese SSH-Sitzung das
+# trotzdem im Browser angelegt werden kann, reicht eine SSH-Verbindung das
 # Dashboard an http://localhost:<port> auf diesem Rechner durch.
+#
+# Wichtig: NICHT in der interaktiven Sitzung. SSH beendet sich erst, wenn alle
+# weitergeleiteten Verbindungen zu sind. Ist der Coolify-Tab im Browser offen,
+# haengt die Sitzung sonst nach dem Server-Teil fest, und der Rueckfall-Timer
+# laeuft ab, ohne dass dieses Script testen und bestaetigen kann.
+$script:FwdProc = $null
+function Start-DashboardForward {
+    if ($null -ne $script:FwdProc -and -not $script:FwdProc.HasExited) { return }
+    $weiter = '127.0.0.1:' + $script:LocalPort + ':127.0.0.1:8000'
+    try {
+        $script:FwdProc = Start-Process -FilePath 'ssh.exe' -WindowStyle Hidden -PassThru -ArgumentList @(
+            '-N', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', '-o', 'ExitOnForwardFailure=yes',
+            '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3',
+            '-L', $weiter, $Name)
+    } catch { $script:FwdProc = $null }
+}
+function Stop-DashboardForward {
+    if ($null -ne $script:FwdProc -and -not $script:FwdProc.HasExited) {
+        try { $script:FwdProc.Kill() } catch { }
+    }
+    $script:FwdProc = $null
+}
+
+# Server-Script starten (interaktiv, stdin und stdout gehen durch). Gibt den Exit-Code zurueck.
 function Invoke-ServerSetup {
     $befehl = (Get-SudoPrefix) + $ServerDir + '/install.sh --setup'
-    $weiter = '127.0.0.1:' + $script:LocalPort + ':127.0.0.1:8000'
-    & ssh.exe -t -o ConnectTimeout=10 -o ExitOnForwardFailure=no -L $weiter $Name $befehl
+    Start-DashboardForward
+    & ssh.exe -t -o ConnectTimeout=10 $Name $befehl
     return $LASTEXITCODE
 }
 
@@ -759,6 +783,7 @@ while ($true) {
     # Reboot noetig?
     if ($rc -eq $ExitReboot -or $S_Reboot -eq 'pending') {
         Show-Say '  Der Server startet neu. Das dauert etwa eine Minute.'
+        Stop-DashboardForward
         $rebootBefehl = 'sudo rm -f /var/lib/coolify-shield/reboot-pending; ' +
                         'sudo sed -i ' + "'" + '/^reboot=/d' + "'" + ' /var/lib/coolify-shield/laptop.env; ' +
                         'sudo systemd-run --on-active=2s /sbin/reboot'
@@ -925,6 +950,7 @@ $Durchgelaufen = $true
 
 }
 finally {
+    Stop-DashboardForward
     # Strg+C oder Fenster zu: das soll nicht nach Absturz aussehen.
     if (-not $Durchgelaufen) {
         Write-Host ''
