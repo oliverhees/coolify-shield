@@ -312,17 +312,56 @@ function Read-ServerEnv {
     }
 }
 
-# Server-Script starten (interaktiv, stdin und stdout gehen durch). Gibt den Exit-Code zurueck.
+# Dashboard-Weiterleitung: Die Hetzner-Firewall laesst Port 8000 nicht durch
+# (soll sie auch nicht), und der WireGuard-Tunnel kommt erst spaeter. Damit der
+# Coolify-Account trotzdem im Browser angelegt werden kann, reicht eine eigene
+# SSH-Sitzung im Hintergrund das Dashboard an http://localhost:<port> auf
+# diesem Rechner durch.
 #
-# -L: Die Hetzner-Firewall laesst Port 8000 nicht durch (soll sie auch nicht),
-# und der WireGuard-Tunnel kommt erst spaeter. Damit der Coolify-Account
-# trotzdem im Browser angelegt werden kann, reicht diese SSH-Sitzung das
-# Dashboard an http://localhost:<port> auf diesem Rechner durch.
+# Bewusst NICHT als -L an der Sitzung von Invoke-ServerSetup: SSH beendet sich
+# erst, wenn keine weitergereichte Verbindung mehr offen ist. Ein offener
+# Browser-Tab haelt dann die Sitzung fest, obwohl der Server-Teil laengst fertig
+# ist, und die Pruefung von aussen startet nie (der Rueckfall-Timer laeuft ab).
+$script:ForwardProc = $null
+
+function Start-DashboardForward {
+    Stop-DashboardForward
+    if (-not $script:LocalPort) { return }
+    $weiter = '127.0.0.1:' + $script:LocalPort + ':127.0.0.1:8000'
+    $argumente = @('-N', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10',
+                   '-o', 'ExitOnForwardFailure=yes', '-L', $weiter, $Name)
+    try {
+        $script:ForwardProc = Start-Process -FilePath 'ssh.exe' -ArgumentList $argumente `
+            -WindowStyle Hidden -PassThru
+    } catch {
+        $script:ForwardProc = $null
+    }
+}
+
+function Stop-DashboardForward {
+    $p = $script:ForwardProc
+    $script:ForwardProc = $null
+    if ($null -eq $p) { return }
+    try {
+        if (-not $p.HasExited) {
+            $p.Kill()
+            $null = $p.WaitForExit(5000)
+        }
+    } catch { }
+}
+
+# Server-Script starten (interaktiv, stdin und stdout gehen durch). Gibt den Exit-Code zurueck.
+# Die Weiterleitung laeuft nur, solange der Server-Teil laeuft.
 function Invoke-ServerSetup {
     $befehl = (Get-SudoPrefix) + $ServerDir + '/install.sh --setup'
-    $weiter = '127.0.0.1:' + $script:LocalPort + ':127.0.0.1:8000'
-    & ssh.exe -t -o ConnectTimeout=10 -o ExitOnForwardFailure=no -L $weiter $Name $befehl
-    return $LASTEXITCODE
+    Start-DashboardForward
+    try {
+        & ssh.exe -t -o ConnectTimeout=10 $Name $befehl
+        $code = $LASTEXITCODE
+    } finally {
+        Stop-DashboardForward
+    }
+    return $code
 }
 
 # Freien Port auf diesem Rechner suchen (8000, sonst 8001 bis 8010).
@@ -925,6 +964,8 @@ $Durchgelaufen = $true
 
 }
 finally {
+    # Die Weiterleitung im Hintergrund darf das Script nicht ueberleben.
+    Stop-DashboardForward
     # Strg+C oder Fenster zu: das soll nicht nach Absturz aussehen.
     if (-not $Durchgelaufen) {
         Write-Host ''

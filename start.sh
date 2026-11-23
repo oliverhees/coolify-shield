@@ -161,18 +161,41 @@ pick_local_port() {
   printf '8000'
 }
 
-# Server-Script starten (interaktiv). Gibt den Exit-Code zurueck.
+# Dashboard-Weiterleitung: Die Hetzner-Firewall laesst Port 8000 nicht durch
+# (soll sie auch nicht), und der WireGuard-Tunnel kommt erst spaeter. Damit du
+# deinen Coolify-Account trotzdem im Browser anlegen kannst, reicht eine eigene
+# SSH-Sitzung im Hintergrund das Dashboard an http://localhost:<port> auf
+# deinem Rechner durch. Nichts wird geoeffnet.
 #
-# -L: Die Hetzner-Firewall laesst Port 8000 nicht durch (soll sie auch nicht),
-# und der WireGuard-Tunnel kommt erst spaeter. Damit du deinen Coolify-Account
-# trotzdem im Browser anlegen kannst, reicht diese SSH-Sitzung das Dashboard
-# an http://localhost:<port> auf deinem Rechner durch. Nichts wird geoeffnet.
+# Bewusst NICHT als -L an der Sitzung von run_server: SSH beendet sich erst,
+# wenn keine weitergereichte Verbindung mehr offen ist. Ein offener Browser-Tab
+# haelt dann die Sitzung fest, obwohl der Server-Teil laengst fertig ist, und
+# die Pruefung von aussen startet nie (der Rueckfall-Timer laeuft ab).
+FWD_PID=""
+start_forward() {
+  stop_forward
+  [ -n "${LOCAL_PORT:-}" ] || return 0
+  ssh -N -o BatchMode=yes -o ConnectTimeout=10 -o ExitOnForwardFailure=yes \
+    -L "127.0.0.1:$LOCAL_PORT:127.0.0.1:8000" "$NAME" </dev/null >/dev/null 2>&1 &
+  FWD_PID=$!
+}
+stop_forward() {
+  [ -n "$FWD_PID" ] || return 0
+  kill "$FWD_PID" 2>/dev/null || true
+  wait "$FWD_PID" 2>/dev/null || true
+  FWD_PID=""
+}
+trap stop_forward EXIT
+
+# Server-Script starten (interaktiv). Gibt den Exit-Code zurueck.
+# Die Weiterleitung laeuft nur, solange der Server-Teil laeuft.
 run_server() {
-  local sudo_prefix=""
+  local sudo_prefix="" rc=0
   [ "$(state_get user)" != "root" ] && sudo_prefix="sudo "
-  ssh -t -o ConnectTimeout=10 -o ExitOnForwardFailure=no \
-    -L "127.0.0.1:$LOCAL_PORT:127.0.0.1:8000" \
-    "$NAME" "${sudo_prefix}$SERVER_DIR/install.sh --setup"
+  start_forward
+  ssh -t -o ConnectTimeout=10 "$NAME" "${sudo_prefix}$SERVER_DIR/install.sh --setup" || rc=$?
+  stop_forward
+  return "$rc"
 }
 
 # ---------------------------------------------------------------------------
